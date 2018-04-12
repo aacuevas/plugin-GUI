@@ -34,7 +34,7 @@ MultiStreamTester::MultiStreamTester(SourceNode* sn)
 
 	for (int i = 0; i < m_waves.size(); i++)
 	{
-		sourceBuffers.add(new DataBuffer(m_waves[i].numChannels, 2048));
+		sourceBuffers.add(new DataBuffer(m_waves[i].numChannels, 8192));
 	}
 	m_fakeEvent = 0;
 }
@@ -54,6 +54,7 @@ bool MultiStreamTester::updateBuffer()
 	{
 		int numSamples = int(float(elapsed) / float(m_ticksPerSecond) * m_waves[s].sampleRate);
 		int64 lastSample = m_lastSample[s];
+		//std::cout << " stream " << s << " last " << lastSample << " num " << numSamples << std::endl;
 		for (int sample = 0; sample < numSamples; sample++)
 		{
 			int64 curSample = lastSample + sample;
