@@ -77,6 +77,10 @@ bool MultiStreamTester::startAcquisition()
 {
 	m_lastSample.clear();
 	m_factors.clear();
+	for (int i = 0; i < m_waves.size(); i++)
+	{
+		sourceBuffers[i]->clear();
+	}
 
 	int nStreams = m_waves.size();
 	m_lastSample.insertMultiple(0, 0, nStreams);
