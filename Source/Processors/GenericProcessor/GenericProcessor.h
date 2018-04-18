@@ -241,7 +241,7 @@ public:
     GenericProcessor* destNode;
 
     /** Returns the sample rate for a processor (assumes the same rate for all channels).*/
-    virtual float getSampleRate(int subProcessorIdx = 0) const;
+    virtual float getSampleRate(int streamIdx = 0) const;
 
     /** Returns the default sample rate, in case a processor has no source (or is itself a source).*/
     virtual float getDefaultSampleRate() const;
@@ -253,14 +253,14 @@ public:
     virtual int getNumOutputs() const;
 
 	/** Returns the number of outputs from a specific processor.*/
-	virtual int getNumOutputs(int subProcessorIdx) const;
+	virtual int getNumOutputs(int streamIdx) const;
 
     /** Returns the default number of volts per bit, in case a processor is a source, of the processor gain otherwise. (assumes data comes from a 16bit source)*/
     virtual float getDefaultBitVolts() const;
 
-	/** Returns the default bitVolts value for a given subprocessor
+	/** Returns the default bitVolts value for a given stream
 	@see getDefaultBitVolts */
-	virtual float getBitVolts(int subprocessorIdx = 0) const;
+	virtual float getBitVolts(int streamIdx = 0) const;
 
     /** Returns the bit volts for a given channel **/
     virtual float getBitVolts (const DataChannel* chan) const;
@@ -471,8 +471,8 @@ public:
     juce::uint64 getTimestamp (int channelNumber) const;
 
 	/** Used to get the number of samples a specific source generates. 
-	Look by source ID and subprocessor index */
-	uint32 getNumSourceSamples(uint16 processorID, uint16 subProcessorIdx) const;
+	Look by source ID and stream index */
+	uint32 getNumSourceSamples(uint16 processorID, uint16 stream) const;
 
 	/** Used to get the number of samples a specific source generates.
 	Look by full source ID.
@@ -480,23 +480,23 @@ public:
 	uint32 getNumSourceSamples(uint32 fullSourceID) const;
 
 	/** Used to get the current timestamp of a specific source.
-	Look by source ID and subprocessor index */
-	juce::uint64 getSourceTimestamp(uint16 processorID, uint16 subProcessorIdx) const;
+	Look by source ID and stream index */
+	juce::uint64 getSourceTimestamp(uint16 processorID, uint16 streamIdx) const;
 
 	/** Used to get the current timestamp of a specific source.
 	Look by full source ID.
 	@see GenericProcessor::getProcessorFullId(uint16,uint16) */
 	juce::uint64 getSourceTimestamp(uint32 fullSourceID) const;
 
-	virtual int getNumSubProcessors() const;
+	virtual int getNumStreams() const;
 
-	int getDataChannelIndex(int channelIdx, int processorID, int subProcessorIdx = 0) const;
+	int getDataChannelIndex(int channelIdx, int processorID, int streamIdx = 0) const;
 
-	int getEventChannelIndex(int channelIdx, int processorID, int subProcessorIdx = 0) const;
+	int getEventChannelIndex(int channelIdx, int processorID, int streamIdx = 0) const;
 
 	int getEventChannelIndex(const Event*) const;
 
-	int getSpikeChannelIndex(int channelIdx, int processorID, int subProcessorIdx = 0) const;
+	int getSpikeChannelIndex(int channelIdx, int processorID, int streamIdx = 0) const;
 
 	int getSpikeChannelIndex(const SpikeEvent*) const;
 
@@ -520,7 +520,7 @@ public:
 
 	juce::int64 getLastProcessedsoftwareTime() const;
 
-	static uint32 getProcessorFullId(uint16 processorId, uint16 subprocessorIdx);
+	static uint32 getProcessorFullId(uint16 processorId, uint16 streamIdx);
 
 	class PLUGIN_API DefaultEventInfo
 	{
@@ -538,7 +538,7 @@ public:
 
 protected:
 	/** Used to set the timestamp for a given buffer, for a given source node. */
-	void setTimestampAndSamples(juce::uint64 timestamp, uint32 nSamples, int subProcessorIdx = 0);
+	void setTimestampAndSamples(juce::uint64 timestamp, uint32 nSamples, int streamIdx = 0);
 
 	/** Can be called by processors that need to respond to incoming events.
 	Set respondToSpikes to true if the processor should also search for spikes*/
@@ -557,13 +557,13 @@ protected:
 	/** Responds to TIMESTAMP_SYNC_TEXT system events, in case a processor needs to listen to them (useful for the record node) */
 	virtual void handleTimestampSyncTexts(const MidiMessage& event);
 
-	/** Returns the default number of datachannels outputs for a specific type and a specific subprocessor
+	/** Returns the default number of datachannels outputs for a specific type and a specific stream
 	Called by createDataChannels(). It is not needed to implement if createDataChannels() is overriden */
-	virtual int getDefaultNumDataOutputs(DataChannel::DataChannelTypes type, int subProcessorIdx = 0) const;
+	virtual int getDefaultNumDataOutputs(DataChannel::DataChannelTypes type, int streamIdx = 0) const;
 
-	/** Returns info about the default events a specific subprocessor generates.
+	/** Returns info about the default events a specific stream generates.
 	Called by createEventChannels(). It is not needed to implement if createEventChannels() is overriden */
-	virtual void getDefaultEventInfo(Array<DefaultEventInfo>& events, int subProcessorIdx = 0) const;
+	virtual void getDefaultEventInfo(Array<DefaultEventInfo>& events, int streamIdx = 0) const;
 
     /** Sets whether processor will have behaviour like Source, Sink, Splitter, Utility or Merge */
     void setProcessorType (PluginProcessorType processorType);

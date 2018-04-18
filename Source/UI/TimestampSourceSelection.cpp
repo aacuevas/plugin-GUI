@@ -94,7 +94,7 @@ void TimestampSourceSelectionComponent::updateProcessorList()
 	for (int i = 0; i < nProcessors; i++)
 	{
 		const GenericProcessor* p = processors.getUnchecked(i);
-		int numSubs = p->getNumSubProcessors();
+		int numSubs = p->getNumStreams();
 		for (int j = 0; j < numSubs; j++)
 		{
 			String text = (numSubs > 1) ? p->getName() + "(" + String(j + 1) + ")" : p->getName();

@@ -75,7 +75,7 @@ void AudioNode::updateBufferSize()
 void AudioNode::setChannel(const DataChannel* ch)
 {
 
-	int channelNum = getDataChannelIndex(ch->getSourceIndex(), ch->getSourceNodeID(), ch->getSubProcessorIdx());
+	int channelNum = getDataChannelIndex(ch->getSourceIndex(), ch->getSourceNodeID(), ch->getStreamIdx());
 
     std::cout << "Audio node setting channel to " << channelNum << std::endl;
 
@@ -324,7 +324,7 @@ void AudioNode::process(AudioSampleBuffer& buffer)
 
                     int remainingSamples = numSamplesExpected[i] - samplesToCopyFromOverflowBuffer;
 
-                    int samplesAvailable = getNumSourceSamples(dataChannelArray[i]->getSourceNodeID(), dataChannelArray[i]->getSubProcessorIdx());
+                    int samplesAvailable = getNumSourceSamples(dataChannelArray[i]->getSourceNodeID(), dataChannelArray[i]->getStreamIdx());
 
                     int samplesToCopyFromIncomingBuffer = ((remainingSamples <= samplesAvailable) ?
                                                            remainingSamples :

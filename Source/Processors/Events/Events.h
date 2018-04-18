@@ -36,7 +36,7 @@ Event packet structure:
 EventType - 1byte
 SubType - 1byte
 Source processor ID - 2bytes
-Source Subprocessor index - 2 bytes
+Source stream index - 2 bytes
 Source Event index - 2 bytes 
 Timestamp - 8 bytes
 Event Virtual Channel - 2 bytes
@@ -50,7 +50,7 @@ Spike packet structure
 EventType - 1byte
 ElectrodeType - 1byte
 Source processor ID - 2bytes
-Source Subprocessor index - 2 bytes
+Source stream index - 2 bytes
 Source electrode index - 2 bytes
 Timestamp - 8 bytes
 sortedID - 2 bytes (defaults to 0)
@@ -88,18 +88,18 @@ public:
 	EventType getBaseType() const;
 	juce::int64 getTimestamp() const;
 	uint16 getSourceID() const;
-	uint16 getSubProcessorIdx() const;
+	uint16 getStreamIdx() const;
 	uint16 getSourceIndex() const;
 
 	static EventType getBaseType(const MidiMessage& msg);
 	static EventBasePtr deserializeFromMessage(const MidiMessage& msg, const GenericProcessor* processor);
 
 	static uint16 getSourceID(const MidiMessage& msg);
-	static uint16 getSubProcessorIdx(const MidiMessage& msg);
+	static uint16 getStreamIdx(const MidiMessage& msg);
 	static uint16 getSourceIndex(const MidiMessage& msg);
 	static juce::int64 getTimestamp(const MidiMessage &msg);
 protected:
-	EventBase(EventType type, juce::int64 timestamp, uint16 sourceID, uint16 subIdx, uint16 sourceIndex);
+	EventBase(EventType type, juce::int64 timestamp, uint16 sourceID, uint16 streamIdx, uint16 sourceIndex);
 	EventBase() = delete;
 
 	static bool compareMetaData(const MetaDataEventObject* channelInfo, const MetaDataValueArray& metaData);
@@ -107,7 +107,7 @@ protected:
 	const EventType m_baseType;
 	const juce::int64 m_timestamp;
 	const uint16 m_sourceID;
-	const uint16 m_sourceSubIdx;
+	const uint16 m_sourceStreamIdx;
 	const uint16 m_sourceIndex;
 };
 
@@ -118,8 +118,8 @@ class PLUGIN_API SystemEvent
 	: public EventBase
 {
 public:
-	static size_t fillTimestampAndSamplesData(HeapBlock<char>& data, const GenericProcessor* proc, int16 subProcessorIdx, juce::int64 timestamp, uint32 nSamples);
-	static size_t fillTimestampSyncTextData(HeapBlock<char>& data, const GenericProcessor* proc, int16 subProcessorIdx, juce::int64 timestamp, bool softwareTime = false);
+	static size_t fillTimestampAndSamplesData(HeapBlock<char>& data, const GenericProcessor* proc, int16 streamIdx, juce::int64 timestamp, uint32 nSamples);
+	static size_t fillTimestampSyncTextData(HeapBlock<char>& data, const GenericProcessor* proc, int16 streamIdx, juce::int64 timestamp, bool softwareTime = false);
 	static SystemEventType getSystemEventType(const MidiMessage& msg);
 	static uint32 getNumSamples(const MidiMessage& msg);
 	static String getSyncText(const MidiMessage& msg);

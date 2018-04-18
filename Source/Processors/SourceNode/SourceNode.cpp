@@ -346,7 +346,7 @@ void SourceNode::acquisitionStopped()
     }
 }
 
-int SourceNode::getNumSubProcessors() const
+int SourceNode::getNumStreams() const
 {
 	if (!dataThread) return 0;
 	return dataThread->getNumSubProcessors();

@@ -38,7 +38,7 @@ Structure with the basic info that identifies a channel
 struct SourceChannelInfo
 {
 	uint16 processorID;
-	uint16 subProcessorID;
+	uint16 streamIdx;
 	uint16 channelIDX;
 };
 
@@ -86,15 +86,15 @@ private:
 class PLUGIN_API SourceProcessorInfo
 {
 protected:
-	SourceProcessorInfo(const GenericProcessor* source, uint16 subproc = 0);
+	SourceProcessorInfo(const GenericProcessor* source, uint16 streamIdx = 0);
 
 public:
     virtual ~SourceProcessorInfo();
 	/** Gets the ID of the processor which created the channel object */
 	uint16 getSourceNodeID() const;
 
-	/** Gets the subprocessor index associated to this channel object*/
-	uint16 getSubProcessorIdx() const;
+	/** Gets the stream index associated to this channel object*/
+	uint16 getStreamIdx() const;
 
 	/** Gets the processor type of the node which created this object */
 	String getSourceType() const;
@@ -102,17 +102,17 @@ public:
 	/** Gets the name of the processor which created this object */
 	String getSourceName() const;
 
-	/** Gets the number of subprocessors the source processor has.
-	Useful to determine if a processor has multiple subprocessors and label things accordingly*/
-	uint16 getSourceSubprocessorCount() const;
+	/** Gets the number of streams the source processor has.
+	Useful to determine if a processor has multiple streams and label things accordingly*/
+	uint16 getSourceStreamCount() const;
  
 private:
 	SourceProcessorInfo() = delete;
 	const uint16 m_sourceNodeID;
-	const uint16 m_sourceSubNodeIndex;
+	const uint16 m_sourceStreamNodeIndex;
 	const String m_sourceType;
 	const String m_sourceName;
-	const uint16 m_sourceSubProcessorCount;
+	const uint16 m_sourceStreamProcessorCount;
 };
 
 class PLUGIN_API NamedInfoObject
@@ -150,7 +150,7 @@ class PLUGIN_API InfoObjectCommon :
 	public NodeInfoBase, public SourceProcessorInfo, public NamedInfoObject
 {
 protected:
-	InfoObjectCommon(uint16 idx, uint16 typeidx, float sampleRate, const GenericProcessor* source, uint16 subproc = 0);
+	InfoObjectCommon(uint16 idx, uint16 typeidx, float sampleRate, const GenericProcessor* source, uint16 streamIdx = 0);
 
 public:
     virtual ~InfoObjectCommon();
@@ -209,9 +209,9 @@ public:
 		@param type The type of data this channel represents (HEADSTAGE, ADC, AUX)
 		@param sampleRate the sample rate this channel is acquiring data
 		@param source A pointer to the source processor
-		@param subproc Optional. The source subprocessor index.
+		@param streamIdx Optional. The source stream index.
 	*/
-	DataChannel(DataChannelTypes type, float sampleRate, GenericProcessor* source, uint16 subproc = 0);
+	DataChannel(DataChannelTypes type, float sampleRate, GenericProcessor* source, uint16 streamIdx = 0);
 
 	/** Copy constructor. */
 	DataChannel(const DataChannel& ch);
@@ -305,7 +305,7 @@ public:
 	@param dataLength The length of the event payload
 	@param sampleRate the sample rate this channel timestamps are referred to
 	@param source A pointer to the source processor
-	@param subproc Optional. The source subprocessor index.
+	@param streamIdx Optional. The source stream index.
 
 	The virtual channels mean:
 	-For TTL signals, it must be the number of bits in the TTL word.
@@ -317,7 +317,7 @@ public:
 	-For typed array events, the number of elements
 
 	*/
-	EventChannel(EventChannelTypes type, unsigned int numChannels, unsigned int dataLength, float sampleRate, GenericProcessor* source, uint16 subproc = 0);
+	EventChannel(EventChannelTypes type, unsigned int numChannels, unsigned int dataLength, float sampleRate, GenericProcessor* source, uint16 streamIdx = 0);
 
 	virtual ~EventChannel();
 
@@ -387,9 +387,9 @@ public:
 		@param type The type of electrode this channel represents (SINGLE, STEREOTRODE, TETRODE)
 		@param source A pointer to the source processor
 		@param souceChannels An array containing const pointers to the channels that originate the data for this spike electrode
-		@param subproc Optional. The source subprocessor index.
+		@param streamIdx Optional. The source stream index.
 	*/
-	SpikeChannel(ElectrodeTypes type, GenericProcessor* source, const Array<const DataChannel*>& sourceChannels, uint16 subproc = 0);
+	SpikeChannel(ElectrodeTypes type, GenericProcessor* source, const Array<const DataChannel*>& sourceChannels, uint16 streamIdx = 0);
 
 	virtual ~SpikeChannel();
 
@@ -452,9 +452,9 @@ public:
 	/**Default constructor
 	@param identifier the identifier field of NamedInfoObject, required for config objects
 	@param source The source processor
-	@param subproc Optional. The source subprocessor index
+	@param streamIdx Optional. The source stream index
 	*/
-	ConfigurationObject(String identifier, GenericProcessor* source, uint16 subproc = 0);
+	ConfigurationObject(String identifier, GenericProcessor* source, uint16 streamIdx = 0);
     virtual ~ConfigurationObject();
 
 	/** Sets if the configuration should be recorded or not.

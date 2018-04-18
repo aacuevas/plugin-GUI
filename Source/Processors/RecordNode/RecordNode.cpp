@@ -69,7 +69,7 @@ RecordNode::~RecordNode()
 
 void RecordNode::setChannel(const DataChannel* ch)
 {
-	int channelNum = getDataChannelIndex(ch->getSourceIndex(), ch->getSourceNodeID(), ch->getSubProcessorIdx());
+	int channelNum = getDataChannelIndex(ch->getSourceIndex(), ch->getSourceNodeID(), ch->getStreamIdx());
 
     std::cout << "Record node setting channel to " << channelNum << std::endl;
 
@@ -456,7 +456,7 @@ void RecordNode::handleEvent(const EventChannel* eventInfo, const MidiMessage& e
 				int64 timestamp = Event::getTimestamp(event);
 				int eventIndex;
 				if (eventInfo)
-					eventIndex = getEventChannelIndex(Event::getSourceIndex(event), Event::getSourceID(event), Event::getSubProcessorIdx(event));
+					eventIndex = getEventChannelIndex(Event::getSourceIndex(event), Event::getSourceID(event), Event::getStreamIdx(event));
 				else
 					eventIndex = -1;
 				m_eventQueue->addEvent(event, timestamp, eventIndex);
@@ -526,7 +526,7 @@ void RecordNode::writeSpike(const SpikeEvent* spike, const SpikeChannel* spikeEl
 {
 	if (isRecording)
 	{
-		int electrodeIndex = getSpikeChannelIndex(spikeElectrode->getSourceIndex(), spikeElectrode->getSourceNodeID(), spikeElectrode->getSubProcessorIdx());
+		int electrodeIndex = getSpikeChannelIndex(spikeElectrode->getSourceIndex(), spikeElectrode->getSourceNodeID(), spikeElectrode->getStreamIdx());
 		if (electrodeIndex >= 0)
 			m_spikeQueue->addEvent(*spike, spike->getTimestamp(), electrodeIndex);
 	}

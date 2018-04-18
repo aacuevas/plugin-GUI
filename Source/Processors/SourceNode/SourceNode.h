@@ -59,7 +59,7 @@ public:
     void saveCustomParametersToXml (XmlElement* parentElement)  override;
     void loadCustomParametersFromXml()                          override;
 
-	int getNumSubProcessors() const override;
+	int getNumStreams() const override;
 
     float getSampleRate(int subProcessorIdx = 0)        const override;
     float getDefaultSampleRate() const override;

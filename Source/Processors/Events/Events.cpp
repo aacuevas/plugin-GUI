@@ -48,8 +48,8 @@ juce::int64 EventBase::getTimestamp(const MidiMessage& msg)
 	return *reinterpret_cast<const juce::int64*>(data + 8);
 }
 
-EventBase::EventBase(EventType type, juce::int64 timestamp, uint16 sourceID, uint16 sourceSubIdx, uint16 sourceIndex)
-	: m_baseType(type), m_timestamp(timestamp), m_sourceID(sourceID), m_sourceSubIdx(sourceSubIdx), m_sourceIndex(sourceIndex)
+EventBase::EventBase(EventType type, juce::int64 timestamp, uint16 sourceID, uint16 streamIdx, uint16 sourceIndex)
+	: m_baseType(type), m_timestamp(timestamp), m_sourceID(sourceID), m_sourceStreamIdx(streamIdx), m_sourceIndex(sourceIndex)
 {}
 
 EventBase::~EventBase() {}
@@ -61,18 +61,18 @@ EventBasePtr EventBase::deserializeFromMessage(const MidiMessage& msg, const Gen
 	const uint8* data = msg.getRawData();
 	const EventType type = static_cast<EventType>(*data);
 	const uint16 processorID = static_cast<uint16>(*(data + 2));
-	const uint16 subProcessorID = static_cast<uint16>(*(data + 4));
+	const uint16 streamIdx = static_cast<uint16>(*(data + 4));
 	const uint16 channelIDX = static_cast<uint16>(*(data + 6));
 
 	switch (type)
 	{
 	case PROCESSOR_EVENT:
-	{		const EventChannel* chan = processor->getEventChannel(processor->getEventChannelIndex(channelIDX, processorID, subProcessorID));
+	{		const EventChannel* chan = processor->getEventChannel(processor->getEventChannelIndex(channelIDX, processorID, streamIdx));
 			return Event::deserializeFromMessage(msg, chan).release();
 	}
 	case SPIKE_EVENT:
 	{
-		const SpikeChannel* chan = processor->getSpikeChannel(processor->getSpikeChannelIndex(channelIDX, processorID, subProcessorID));
+		const SpikeChannel* chan = processor->getSpikeChannel(processor->getSpikeChannelIndex(channelIDX, processorID, streamIdx));
 		return SpikeEvent::deserializeFromMessage(msg, chan).release();
 	}
 	default:
@@ -105,15 +105,15 @@ uint16 EventBase::getSourceID() const
 	return m_sourceID;
 }
 
-uint16 EventBase::getSubProcessorIdx(const MidiMessage& msg)
+uint16 EventBase::getStreamIdx(const MidiMessage& msg)
 {
 	const uint8* data = msg.getRawData();
 	return *reinterpret_cast<const uint16*>(data + 4);
 }
 
-uint16 EventBase::getSubProcessorIdx() const
+uint16 EventBase::getStreamIdx() const
 {
-	return m_sourceSubIdx;
+	return m_sourceStreamIdx;
 }
 
 uint16 EventBase::getSourceIndex(const MidiMessage& msg)
@@ -134,13 +134,13 @@ SystemEventType SystemEvent::getSystemEventType(const MidiMessage& msg)
 	return static_cast<SystemEventType>(*(data + 1));
 }
 
-size_t SystemEvent::fillTimestampAndSamplesData(HeapBlock<char>& data, const GenericProcessor* proc, int16 subProcessorIdx, juce::int64 timestamp, uint32 nSamples)
+size_t SystemEvent::fillTimestampAndSamplesData(HeapBlock<char>& data, const GenericProcessor* proc, int16 streamIdx, juce::int64 timestamp, uint32 nSamples)
 {
 	/** Event packet structure
 	* SYSTEM_EVENT - 1 byte
 	* TIMESTAMP_AND_SAMPLES - 1 byte
 	* Source processorID - 2 bytes
-	* Source Subprocessor index - 2 bytes
+	* Source stream index - 2 bytes
 	* Zero-fill (to maintain aligment with other events) - 2 bytes
 	* Timestamp - 8 bytes
 	* Buffer sample number - 4 bytes
@@ -150,7 +150,7 @@ size_t SystemEvent::fillTimestampAndSamplesData(HeapBlock<char>& data, const Gen
 	data[0] = SYSTEM_EVENT;
 	data[1] = TIMESTAMP_AND_SAMPLES;
 	*reinterpret_cast<uint16*>(data.getData() + 2) = proc->getNodeId();
-	*reinterpret_cast<uint16*>(data.getData() + 4) = subProcessorIdx;
+	*reinterpret_cast<uint16*>(data.getData() + 4) = streamIdx;
 	data[6] = 0;
 	data[7] = 0;
 	*reinterpret_cast<juce::int64*>(data.getData() + 8) = timestamp;
@@ -158,13 +158,13 @@ size_t SystemEvent::fillTimestampAndSamplesData(HeapBlock<char>& data, const Gen
 	return eventSize;
 }
 
-size_t SystemEvent::fillTimestampSyncTextData(HeapBlock<char>& data, const GenericProcessor* proc, int16 subProcessorIdx, juce::int64 timestamp, bool softwareTime)
+size_t SystemEvent::fillTimestampSyncTextData(HeapBlock<char>& data, const GenericProcessor* proc, int16 streamIdx, juce::int64 timestamp, bool softwareTime)
 {
 	/** Event packet structure
 	* SYSTEM_EVENT - 1 byte
 	* TIMESTAMP_SYNC_TEXT - 1 byte
 	* Source processorID - 2 bytes
-	* Source Subprocessor index - 2 bytes
+	* Source stream index - 2 bytes
 	* Zero-fill (to maintain aligment with other events) - 2 bytes
 	* Timestamp - 8 bytes
 	* string - variable
@@ -180,12 +180,12 @@ size_t SystemEvent::fillTimestampSyncTextData(HeapBlock<char>& data, const Gener
 			+ proc->getName()
 			+ " Id: "
 			+ String(proc->getNodeId())
-			+ " subProcessor: "
-			+ String(subProcessorIdx)
+			+ " Stream: "
+			+ String(streamIdx)
 		+" start time: "
 			+ String(timestamp)
 			+ "@"
-			+ String(proc->getSampleRate(subProcessorIdx))
+			+ String(proc->getSampleRate(streamIdx))
 			+ "Hz";
 	}
 	size_t textSize = eventString.getNumBytesAsUTF8();
@@ -194,7 +194,7 @@ size_t SystemEvent::fillTimestampSyncTextData(HeapBlock<char>& data, const Gener
 	data[0] = SYSTEM_EVENT;
 	data[1] = TIMESTAMP_SYNC_TEXT;
 	*reinterpret_cast<uint16*>(data.getData() + 2) = proc->getNodeId();
-	*reinterpret_cast<uint16*>(data.getData() + 4) = subProcessorIdx;
+	*reinterpret_cast<uint16*>(data.getData() + 4) = streamIdx;
 	*reinterpret_cast<juce::int64*>(data.getData() + 8) = timestamp;
 	memcpy(data.getData() + 16, eventString.toUTF8(), textSize);
 	return dataSize;
@@ -246,7 +246,7 @@ EventChannel::EventChannelTypes Event::getEventType(const MidiMessage& msg)
 }
 
 Event::Event(const EventChannel* channelInfo, juce::int64 timestamp, uint16 channel)
-	: EventBase(PROCESSOR_EVENT, timestamp, channelInfo->getSourceNodeID(), channelInfo->getSubProcessorIdx(), channelInfo->getSourceIndex()),
+	: EventBase(PROCESSOR_EVENT, timestamp, channelInfo->getSourceNodeID(), channelInfo->getStreamIdx(), channelInfo->getSourceIndex()),
 	m_channel(channel),
 	m_channelInfo(channelInfo),
 	m_eventType(channelInfo->getChannelType())
@@ -286,7 +286,7 @@ bool Event::serializeHeader(EventChannel::EventChannelTypes type, char* buffer, 
 	*(buffer + 0) = PROCESSOR_EVENT;
 	*(buffer + 1) = static_cast<char>(type);
 	*(reinterpret_cast<uint16*>(buffer + 2)) = m_channelInfo->getSourceNodeID();
-	*(reinterpret_cast<uint16*>(buffer + 4)) = m_channelInfo->getSubProcessorIdx();
+	*(reinterpret_cast<uint16*>(buffer + 4)) = m_channelInfo->getStreamIdx();
 	*(reinterpret_cast<uint16*>(buffer + 6)) = m_channelInfo->getSourceIndex();
 	*(reinterpret_cast<juce::int64*>(buffer + 8)) = m_timestamp;
 	*(reinterpret_cast<uint16*>(buffer + 16)) = m_channel;
@@ -437,7 +437,7 @@ TTLEventPtr TTLEvent::deserializeFromMessage(const MidiMessage& msg, const Event
 		return nullptr;
 	}
 
-	if (*reinterpret_cast<const uint16*>(buffer + 4) != channelInfo->getSubProcessorIdx())
+	if (*reinterpret_cast<const uint16*>(buffer + 4) != channelInfo->getStreamIdx())
 	{
 		jassertfalse;
 		return nullptr;
@@ -574,7 +574,7 @@ TextEventPtr TextEvent::deserializeFromMessage(const MidiMessage& msg, const Eve
 		return nullptr;
 	}
 
-	if (*reinterpret_cast<const uint16*>(buffer + 4) != channelInfo->getSubProcessorIdx())
+	if (*reinterpret_cast<const uint16*>(buffer + 4) != channelInfo->getStreamIdx())
 	{
 		jassertfalse;
 		return nullptr;
@@ -750,7 +750,7 @@ BinaryEventPtr BinaryEvent::deserializeFromMessage(const MidiMessage& msg, const
 		return nullptr;
 	}
 
-	if (*reinterpret_cast<const uint16*>(buffer + 4) != channelInfo->getSubProcessorIdx())
+	if (*reinterpret_cast<const uint16*>(buffer + 4) != channelInfo->getStreamIdx())
 	{
 		jassertfalse;
 		return nullptr;
@@ -779,7 +779,7 @@ BinaryEventPtr BinaryEvent::deserializeFromMessage(const MidiMessage& msg, const
 
 //SpikeEvent
 SpikeEvent::SpikeEvent(const SpikeChannel* channelInfo, juce::int64 timestamp, Array<float> thresholds, HeapBlock<float>& data, uint16 sortedID)
-	: EventBase(SPIKE_EVENT, timestamp, channelInfo->getSourceNodeID(), channelInfo->getSubProcessorIdx(), channelInfo->getSourceIndex()),
+	: EventBase(SPIKE_EVENT, timestamp, channelInfo->getSourceNodeID(), channelInfo->getStreamIdx(), channelInfo->getSourceIndex()),
 	m_thresholds(thresholds),
 	m_channelInfo(channelInfo),
 	m_sortedID(sortedID)
@@ -846,7 +846,7 @@ void SpikeEvent::serialize(void* dstBuffer, size_t dstSize) const
 	*(buffer + 0) = SPIKE_EVENT;
 	*(buffer + 1) = static_cast<char>(m_channelInfo->getChannelType());
 	*(reinterpret_cast<uint16*>(buffer + 2)) = m_channelInfo->getSourceNodeID();
-	*(reinterpret_cast<uint16*>(buffer + 4)) = m_channelInfo->getSubProcessorIdx();
+	*(reinterpret_cast<uint16*>(buffer + 4)) = m_channelInfo->getStreamIdx();
 	*(reinterpret_cast<uint16*>(buffer + 6)) = m_channelInfo->getSourceIndex();
 	*(reinterpret_cast<juce::int64*>(buffer + 8)) = m_timestamp;
 	*(reinterpret_cast<uint16*>(buffer + 16)) = m_sortedID;
@@ -976,7 +976,7 @@ SpikeEventPtr SpikeEvent::deserializeFromMessage(const MidiMessage& msg, const S
 		return nullptr;
 	}
 
-	if (*reinterpret_cast<const uint16*>(buffer + 4) != channelInfo->getSubProcessorIdx())
+	if (*reinterpret_cast<const uint16*>(buffer + 4) != channelInfo->getStreamIdx())
 	{
 		jassertfalse;
 		return nullptr;

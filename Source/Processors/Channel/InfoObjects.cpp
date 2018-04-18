@@ -75,12 +75,12 @@ void HistoryObject::addToHistoricString(String entry)
 }
 
 //SourceProcessorInfo
-SourceProcessorInfo::SourceProcessorInfo(const GenericProcessor* source, uint16 subproc) 
+SourceProcessorInfo::SourceProcessorInfo(const GenericProcessor* source, uint16 streamIdx)
 	:	m_sourceNodeID(source->getNodeId()),
-		m_sourceSubNodeIndex(subproc), 
+		m_sourceStreamNodeIndex(streamIdx),
 		m_sourceType(source->getName()),
 		m_sourceName(source->getName()), //TODO: fix those two when we have the ability to rename processors
-		m_sourceSubProcessorCount(source->getNumSubProcessors())
+		m_sourceStreamProcessorCount(source->getNumStreams())
 {
 }
 
@@ -92,9 +92,9 @@ uint16 SourceProcessorInfo::getSourceNodeID() const
 	return m_sourceNodeID;
 }
 
-uint16 SourceProcessorInfo::getSubProcessorIdx() const
+uint16 SourceProcessorInfo::getStreamIdx() const
 {
-	return m_sourceSubNodeIndex;
+	return m_sourceStreamNodeIndex;
 }
 
 String SourceProcessorInfo::getSourceType() const
@@ -107,9 +107,9 @@ String SourceProcessorInfo::getSourceName() const
 	return m_sourceName;
 }
 
-uint16 SourceProcessorInfo::getSourceSubprocessorCount() const
+uint16 SourceProcessorInfo::getSourceStreamCount() const
 {
-	return m_sourceSubProcessorCount;
+	return m_sourceStreamProcessorCount;
 }
 
 //NamedInfoObject
@@ -147,9 +147,9 @@ String NamedInfoObject::getDescription() const
 }
 
 //InfoObjectCommon
-InfoObjectCommon::InfoObjectCommon(uint16 idx, uint16 typeidx, float sampleRate, const GenericProcessor* source, uint16 subproc)
+InfoObjectCommon::InfoObjectCommon(uint16 idx, uint16 typeidx, float sampleRate, const GenericProcessor* source, uint16 streamIdx)
 	:	NodeInfoBase(source->getNodeId(), idx, source->getName(), source->getName()), //TODO: fix those two when we have the ability to rename processors
-		SourceProcessorInfo(source, subproc),
+		SourceProcessorInfo(source, streamIdx),
 		m_sourceIndex(idx),
 		m_sourceTypeIndex(typeidx),
 		m_sampleRate(sampleRate)
@@ -200,8 +200,8 @@ bool InfoObjectCommon::isEqual(const InfoObjectCommon& other, bool similar) cons
 
 //DataChannel
 
-DataChannel::DataChannel(DataChannelTypes type, float sampleRate, GenericProcessor* source, uint16 subproc) :
-	InfoObjectCommon(source->dataChannelCount++, source->dataChannelTypeCount[type]++, sampleRate, source, subproc),
+DataChannel::DataChannel(DataChannelTypes type, float sampleRate, GenericProcessor* source, uint16 streamIdx) :
+	InfoObjectCommon(source->dataChannelCount++, source->dataChannelTypeCount[type]++, sampleRate, source, streamIdx),
 	m_type(type)
 {
 	setDefaultNameAndDescription();
@@ -317,7 +317,7 @@ void DataChannel::setDefaultNameAndDescription()
 		break;
 	}
 	name += " p";
-	name += String(getSourceNodeID()) + String(".") + String(getSubProcessorIdx());
+	name += String(getSourceNodeID()) + String(".") + String(getStreamIdx());
 	name += " n";
 	name += String(getSourceTypeIndex());
 	setName(name);
@@ -336,8 +336,8 @@ bool DataChannel::checkEqual(const InfoObjectCommon& other, bool similar) const
 }
 
 //EventChannel
-EventChannel::EventChannel(EventChannelTypes type, unsigned int nChannels, unsigned int dataLength, float sampleRate, GenericProcessor* source, uint16 subproc)
-	: InfoObjectCommon(source->eventChannelCount++, source->eventChannelTypeCount[type]++, sampleRate, source, subproc),
+EventChannel::EventChannel(EventChannelTypes type, unsigned int nChannels, unsigned int dataLength, float sampleRate, GenericProcessor* source, uint16 streamIdx)
+	: InfoObjectCommon(source->eventChannelCount++, source->eventChannelTypeCount[type]++, sampleRate, source, streamIdx),
 		m_type(type)
 {
 	m_numChannels = nChannels;
@@ -434,7 +434,7 @@ void EventChannel::setDefaultNameAndDescription()
 		break;
 	}
 	name += "p";
-	name += String(getSourceNodeID()) + String(".") + String(getSubProcessorIdx());
+	name += String(getSourceNodeID()) + String(".") + String(getStreamIdx());
 	name += " n";
 	name += String(getSourceTypeIndex());
 	setName(name);
@@ -508,8 +508,8 @@ bool EventChannel::checkEqual(const InfoObjectCommon& other, bool similar) const
 
 //SpikeChannel
 
-SpikeChannel::SpikeChannel(ElectrodeTypes type, GenericProcessor* source, const Array<const DataChannel*>& sourceChannels, uint16 subproc)
-	: InfoObjectCommon(source->spikeChannelCount++, source->spikeChannelTypeCount[type]++, sourceChannels[0]->getSampleRate(), source, subproc),
+SpikeChannel::SpikeChannel(ElectrodeTypes type, GenericProcessor* source, const Array<const DataChannel*>& sourceChannels, uint16 streamIdx)
+	: InfoObjectCommon(source->spikeChannelCount++, source->spikeChannelTypeCount[type]++, sourceChannels[0]->getSampleRate(), source, streamIdx),
 	m_type(type) //We define the sample rate of the whole spike to be equal to that of the first channel. A spike composed from channels from different sample rates has no sense
 {
 	int n = sourceChannels.size();
@@ -519,7 +519,7 @@ SpikeChannel::SpikeChannel(ElectrodeTypes type, GenericProcessor* source, const 
 		SourceChannelInfo info;
 		const DataChannel* chan = sourceChannels[i];
 		info.processorID = chan->getSourceNodeID();
-		info.subProcessorID = chan->getSubProcessorIdx();
+		info.streamIdx = chan->getStreamIdx();
 		info.channelIDX = chan->getSourceIndex();
 		m_sourceInfo.add(info);
 		m_channelBitVolts.add(chan->getBitVolts());
@@ -631,7 +631,7 @@ void SpikeChannel::setDefaultNameAndDescription()
 		break;
 	default: name = "INVALID "; break;
 	}
-	name += String(" p") + String(getSourceNodeID()) + String(".") + String(getSubProcessorIdx()) + String(" n") + String(getSourceTypeIndex());
+	name += String(" p") + String(getSourceNodeID()) + String(".") + String(getStreamIdx()) + String(" n") + String(getSourceTypeIndex());
 	setName(name);
 	setDescription(description + " spike data source");
 	setIdentifier("spikesource");
@@ -659,8 +659,8 @@ bool SpikeChannel::checkEqual(const InfoObjectCommon& other, bool similar) const
 }
 
 //ConfigurationObject
-ConfigurationObject::ConfigurationObject(String identifier, GenericProcessor* source, uint16 subproc)
-	: SourceProcessorInfo(source, subproc)
+ConfigurationObject::ConfigurationObject(String identifier, GenericProcessor* source, uint16 streamIdx)
+	: SourceProcessorInfo(source, streamIdx)
 {
 	setDefaultNameAndDescription();
 	setIdentifier(identifier);
