@@ -452,7 +452,7 @@ bool SpikeSorter::addElectrode(int nChans, String name, double Depth)
         chans[k] = firstChan + k;
 
     Electrode* newElectrode = new Electrode(++uniqueID, &uniqueIDgenerator, &computingThread, name, nChans, chans, getDefaultThreshold(),
-		numPreSamples, numPostSamples, getSampleRate(), dataChannelArray[chans[0]]->getSourceNodeID(), dataChannelArray[chans[0]]->getSubProcessorIdx());
+		numPreSamples, numPostSamples, getSampleRate(), dataChannelArray[chans[0]]->getSourceNodeID(), dataChannelArray[chans[0]]->getStreamIdx());
 
     newElectrode->depthOffsetMM = Depth;
     String log = "Added electrode (ID "+ String(uniqueID)+") with " + String(nChans) + " channels." ;

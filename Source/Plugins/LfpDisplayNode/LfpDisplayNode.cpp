@@ -76,7 +76,7 @@ void LfpDisplayNode::updateSettings()
 
 	for (int i = 0; i < getNumInputs(); i++)
 	{
-		int channelSubprocessor = getDataChannel(i)->getSubProcessorIdx();
+		int channelSubprocessor = getDataChannel(i)->getStreamIdx();
 
 		if (currentSubprocessor != channelSubprocessor)
 		{
@@ -134,7 +134,7 @@ uint32 LfpDisplayNode::getChannelSourceID(const EventChannel* event) const
 	int metaDataIndex = event->findMetaData(MetaDataDescriptor::UINT16, 3, "source.channel.identifier.full");
 	if (metaDataIndex < 0)
 	{
-		return getProcessorFullId(event->getSourceNodeID(), event->getSubProcessorIdx());
+		return getProcessorFullId(event->getSourceNodeID(), event->getStreamIdx());
 	}
 	uint16 values[3];
 	event->getMetaDataValue(metaDataIndex)->getValue(static_cast<uint16*>(values));
@@ -374,7 +374,7 @@ void LfpDisplayNode::process (AudioSampleBuffer& buffer)
 
 			for (int chan = 0; chan < buffer.getNumChannels(); ++chan)
 			{
-				if (getDataChannel(chan)->getSubProcessorIdx() == subprocessorToDraw)
+				if (getDataChannel(chan)->getStreamIdx() == subprocessorToDraw)
 				{
 					channelIndex++;
 					const int samplesLeft = displayBuffer->getNumSamples() - displayBufferIndex[channelIndex];

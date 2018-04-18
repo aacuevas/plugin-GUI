@@ -169,7 +169,7 @@ void PhaseDetector::updateSettings()
 			uint16 sourceInfo[3];
 			sourceInfo[0] = in->getSourceIndex();
 			sourceInfo[1] = in->getSourceNodeID();
-			sourceInfo[2] = in->getSubProcessorIdx();
+			sourceInfo[2] = in->getStreamIdx();
 			mv.setValue(static_cast<const uint16*>(sourceInfo));
 			ev->addMetaData(md, mv);
 		}

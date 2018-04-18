@@ -119,9 +119,9 @@ bool NWBFile::startNewRecording(int recordingNumber, const Array<ContinuousGroup
 		 //so we just pick the first channel.
 		 const DataChannel* info = continuousArray.getReference(i)[0];
 		 basePath = rootPath + "/continuous/processor" + String(info->getCurrentNodeID()) + "_" + String(info->getSourceNodeID());
-		 if (info->getSourceSubprocessorCount() > 1) basePath += "." + String(info->getSubProcessorIdx());
+		 if (info->getSourceStreamCount() > 1) basePath += "." + String(info->getStreamIdx());
 		 String name = info->getCurrentNodeName() + " (" + String(info->getCurrentNodeID()) + ") From " + info->getSourceName() + " (" + String(info->getSourceNodeID());
-		 if (info->getSourceSubprocessorCount() > 1) name += "." + String(info->getSubProcessorIdx());
+		 if (info->getSourceStreamCount() > 1) name += "." + String(info->getStreamIdx());
 		 name += ")";
 		 ancestry.clearQuick();
 		 ancestry.add("Timeseries");
@@ -164,7 +164,7 @@ bool NWBFile::startNewRecording(int recordingNumber, const Array<ContinuousGroup
 		 basePath = rootPath + "/spikes/electrode" + String(i + 1);
 		 const SpikeChannel* info = electrodeArray[i];
 		 String sourceName = info->getSourceName() + "_" + String(info->getSourceNodeID());
-		 if (info->getSourceSubprocessorCount() > 1) sourceName = sourceName + "." + String(info->getSubProcessorIdx());
+		 if (info->getSourceStreamCount() > 1) sourceName = sourceName + "." + String(info->getStreamIdx());
 		 ancestry.clearQuick();
 		 ancestry.add("Timeseries");
 		 ancestry.add("SpikeEventSeries");
@@ -207,7 +207,7 @@ bool NWBFile::startNewRecording(int recordingNumber, const Array<ContinuousGroup
 		 basePath = rootPath + "/events";
 		 const EventChannel* info = eventArray[i];
 		 String sourceName = info->getSourceName() + "_" + String(info->getSourceNodeID());
-		 if (info->getSourceSubprocessorCount() > 1) sourceName = sourceName + "." + String(info->getSubProcessorIdx());
+		 if (info->getSourceStreamCount() > 1) sourceName = sourceName + "." + String(info->getStreamIdx());
 		 ancestry.clearQuick();
 		 ancestry.add("Timeseries");
 

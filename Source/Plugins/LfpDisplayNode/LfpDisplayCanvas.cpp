@@ -237,7 +237,7 @@ void LfpDisplayCanvas::update()
 		{
 			if (i < processor->getNumInputs())
 			{
-				if (processor->getDataChannel(i)->getSubProcessorIdx() == drawableSubprocessor)
+				if (processor->getDataChannel(i)->getStreamIdx() == drawableSubprocessor)
 				{
 					sampleRate.add(processor->getDataChannel(i)->getSampleRate());
 					//std::cout << "Adding sample rate " << processor->getDataChannel(i)->getSampleRate() << std::endl;
@@ -575,7 +575,7 @@ int LfpDisplayCanvas::getNumChannelsVisible()
 
 int LfpDisplayCanvas::getChannelSubprocessorIdx(int channel)
 {
-    return processor->getDataChannel(channel)->getSubProcessorIdx();
+	return processor->getDataChannel(channel)->getStreamIdx();
 }
 
 const float LfpDisplayCanvas::getYCoord(int chan, int samp)

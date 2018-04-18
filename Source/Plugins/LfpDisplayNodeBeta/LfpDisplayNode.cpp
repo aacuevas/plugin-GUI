@@ -99,7 +99,7 @@ uint32 LfpDisplayNode::getChannelSourceID(const EventChannel* event) const
 	int metaDataIndex = event->findMetaData(MetaDataDescriptor::UINT16, 3, "source.channel.identifier.full");
 	if (metaDataIndex < 0)
 	{
-		return getProcessorFullId(event->getSourceNodeID(), event->getSubProcessorIdx());
+		return getProcessorFullId(event->getSourceNodeID(), event->getStreamIdx());
 	}
 	uint16 values[3];
 	event->getMetaDataValue(metaDataIndex)->getValue(static_cast<uint16*>(values));

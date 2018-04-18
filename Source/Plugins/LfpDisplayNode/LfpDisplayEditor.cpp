@@ -126,7 +126,7 @@ void LfpDisplayEditor::updateSubprocessorSelectorOptions()
 
 		for (int i = 0, len = lfpProcessor->getTotalDataChannels(); i < len; ++i)
 		{
-			int subProcessorIdx = lfpProcessor->getDataChannel(i)->getSubProcessorIdx();
+			int subProcessorIdx = lfpProcessor->getDataChannel(i)->getStreamIdx();
 
 			bool success = inputSubprocessorIndices.add(subProcessorIdx);
 

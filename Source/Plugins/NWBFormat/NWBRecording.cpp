@@ -67,12 +67,12 @@
 			 int realChan = getRealChannel(recordedChan);
 			 const DataChannel* channelInfo = getDataChannel(realChan);
 			 int sourceId = channelInfo->getSourceNodeID();
-			 int sourceSubIdx = channelInfo->getSubProcessorIdx();
+			 int sourceSubIdx = channelInfo->getStreamIdx();
 			 int nInfoArrays = continuousChannels.size();
 			 bool found = false;
 			 for (int i = lastId; i < nInfoArrays; i++)
 			 {
-				 if (sourceId == continuousChannels.getReference(i)[0]->getSourceNodeID() && sourceSubIdx == continuousChannels.getReference(i)[0]->getSubProcessorIdx())
+				 if (sourceId == continuousChannels.getReference(i)[0]->getSourceNodeID() && sourceSubIdx == continuousChannels.getReference(i)[0]->getStreamIdx())
 				 {
 					 //A dataset for the current processor from the current source is already present
 					 writeChannelIndexes.set(recordedChan, continuousChannels.getReference(i).size());
