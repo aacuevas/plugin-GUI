@@ -688,7 +688,7 @@ void GenericProcessor::setTimestampAndSamples(juce::uint64 timestamp, uint32 nSa
     timestamps[sourceID] = timestamp;
 	numSamples[sourceID] = nSamples;
 
-	if (m_needsToSendTimestampMessages[streamIdx])
+	if (m_needsToSendTimestampMessages[streamIdx] && nSamples > 0)
     {
 		HeapBlock<char> data;
 		size_t dataSize = SystemEvent::fillTimestampSyncTextData(data, this, streamIdx, timestamp, false);
