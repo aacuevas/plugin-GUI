@@ -46,14 +46,16 @@ private:
 	struct WaveInfo
 	{
 		WaveInfo(float f, float s, int n);
+		WaveInfo(float f, float s, int n, int b);
 		WaveInfo(){};
 		float frequency;
 		float sampleRate;
 		int numChannels;
+		int blockNumSamples;
 	};
 	Array<WaveInfo> m_waves;
 	Array<int64> m_lastSample;
-	int64 m_lastTime;
+	Array<int64> m_lastTime;
 	uint64 m_fakeEvent;
 	int64 m_ticksPerSecond;
 	Array<float> m_factors;

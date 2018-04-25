@@ -29,8 +29,8 @@ MultiStreamTester::MultiStreamTester(SourceNode* sn)
 	: DataThread(sn)
 {
 	//Add as many streams as needed
-	m_waves.add(WaveInfo(5, 30000, 16));
-	m_waves.add(WaveInfo(2, 5000, 16));
+	m_waves.add(WaveInfo(5, 30000, 16, 600));
+	m_waves.add(WaveInfo(2, 2500, 16, 600));
 
 	for (int i = 0; i < m_waves.size(); i++)
 	{
@@ -48,21 +48,24 @@ bool MultiStreamTester::updateBuffer()
 {
 	int nStreams = m_waves.size();
 	int64 curTime = Time::getHighResolutionTicks();
-	int64 elapsed = curTime - m_lastTime;
-	m_lastTime = curTime;
 	for (int s = 0; s < nStreams; s++)
 	{
+		int64 elapsed = curTime - m_lastTime[s];
 		int numSamples = int(float(elapsed) / float(m_ticksPerSecond) * m_waves[s].sampleRate);
-		int64 lastSample = m_lastSample[s];
-		//std::cout << " stream " << s << " last " << lastSample << " num " << numSamples << std::endl;
-		for (int sample = 0; sample < numSamples; sample++)
+		if (numSamples >= m_waves[s].blockNumSamples)
 		{
-			int64 curSample = lastSample + sample;
-			float value = 1000*sinf(m_factors[s] * curSample);
-			std::fill_n(m_tmp.begin(), m_waves[s].numChannels, value);
-			sourceBuffers[s]->addToBuffer(m_tmp.data(), &curSample, &m_fakeEvent, 1);
+			m_lastTime.set(s, curTime);
+			int64 lastSample = m_lastSample[s];
+			//std::cout << " stream " << s << " last " << lastSample << " num " << numSamples << std::endl;
+			for (int sample = 0; sample < numSamples; sample++)
+			{
+				int64 curSample = lastSample + sample;
+				float value = 1000 * sinf(m_factors[s] * curSample);
+				std::fill_n(m_tmp.begin(), m_waves[s].numChannels, value);
+				sourceBuffers[s]->addToBuffer(m_tmp.data(), &curSample, &m_fakeEvent, 1);
+			}
+			m_lastSample.set(s, lastSample + numSamples);
 		}
-		m_lastSample.set(s, lastSample + numSamples);
 	}
 	wait(20);
 	return true;
@@ -77,6 +80,7 @@ bool MultiStreamTester::startAcquisition()
 {
 	m_lastSample.clear();
 	m_factors.clear();
+	m_lastTime.clear();
 	for (int i = 0; i < m_waves.size(); i++)
 	{
 		sourceBuffers[i]->clear();
@@ -91,7 +95,7 @@ bool MultiStreamTester::startAcquisition()
 		m_factors.add(2 * PI*m_waves[i].frequency / m_waves[i].sampleRate);
 	}
 
-	m_lastTime = Time::getHighResolutionTicks();
+	m_lastTime.insertMultiple(0, Time::getHighResolutionTicks(), nStreams);
 	startThread();
 	
 	return true;
@@ -133,7 +137,10 @@ unsigned int MultiStreamTester::getNumSubProcessors() const
 	return m_waves.size();
 }
 
+MultiStreamTester::WaveInfo::WaveInfo(float f, float s, int n, int b)
+	: frequency(f), sampleRate(s), numChannels(n), blockNumSamples(b)
+{}
 
 MultiStreamTester::WaveInfo::WaveInfo(float f, float s, int n)
-	: frequency(f), sampleRate(s), numChannels(n)
+	: frequency(f), sampleRate(s), numChannels(n), blockNumSamples(1)
 {}
