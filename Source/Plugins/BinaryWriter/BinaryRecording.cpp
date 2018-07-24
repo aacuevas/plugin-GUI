@@ -51,12 +51,12 @@ String BinaryRecording::getProcessorString(const InfoObjectCommon* channelInfo)
     if (channelInfo->getCurrentNodeID() == channelInfo->getSourceNodeID())
     // found the channel source
     {
-        fName += "." + String(channelInfo->getSubProcessorIdx());
+        fName += "." + String(channelInfo->getStreamIdx());
     }
     else
     {
         fName += "_" + String(channelInfo->getSourceNodeID()) + "." +
-                 String(channelInfo->getSubProcessorIdx());
+			String(channelInfo->getStreamIdx());
     }
     fName += File::separatorString;
     return fName;
@@ -90,7 +90,7 @@ void BinaryRecording::openFiles(File rootFolder, int experimentNumber, int recor
             int realChan = getRealChannel(recordedChan);
             const DataChannel* channelInfo = getDataChannel(realChan);
             int sourceId = channelInfo->getSourceNodeID();
-            int sourceSubIdx = channelInfo->getSubProcessorIdx();
+			int sourceSubIdx = channelInfo->getStreamIdx();
             int nInfoArrays = indexedDataChannels.size();
             bool found = false;
             DynamicObject::Ptr jsonChan = new DynamicObject();
@@ -105,7 +105,7 @@ void BinaryRecording::openFiles(File rootFolder, int experimentNumber, int recor
             createChannelMetaData(channelInfo, jsonChan);
             for (int i = lastId; i < nInfoArrays; i++)
             {
-                if (sourceId == indexedDataChannels[i]->getSourceNodeID() && sourceSubIdx == indexedDataChannels[i]->getSubProcessorIdx())
+				if (sourceId == indexedDataChannels[i]->getSourceNodeID() && sourceSubIdx == indexedDataChannels[i]->getStreamIdx())
                 {
                     unsigned int count = indexedChannelCount[i];
                     m_channelIndexes.set(recordedChan, count);
@@ -137,7 +137,7 @@ void BinaryRecording::openFiles(File rootFolder, int experimentNumber, int recor
                 jsonFile->setProperty("sample_rate", channelInfo->getSampleRate());
                 jsonFile->setProperty("source_processor_name", channelInfo->getSourceName());
                 jsonFile->setProperty("source_processor_id", channelInfo->getSourceNodeID());
-                jsonFile->setProperty("source_processor_sub_idx", channelInfo->getSubProcessorIdx());
+				jsonFile->setProperty("source_processor_sub_idx", channelInfo->getStreamIdx());
                 jsonFile->setProperty("recorded_processor", channelInfo->getCurrentNodeName());
                 jsonFile->setProperty("recorded_processor_id", channelInfo->getCurrentNodeID());
                 jsonContinuousfiles.add(var(jsonFile));
@@ -248,7 +248,7 @@ void BinaryRecording::openFiles(File rootFolder, int experimentNumber, int recor
             SourceChannelInfo sourceInfo = ch->getSourceChannelInfo()[i];
             DynamicObject::Ptr jsonSpikeChInfo = new DynamicObject();
             jsonSpikeChInfo->setProperty("source_processor_id", sourceInfo.processorID);
-            jsonSpikeChInfo->setProperty("source_processor_sub_idx", sourceInfo.subProcessorID);
+			jsonSpikeChInfo->setProperty("source_processor_sub_idx", sourceInfo.streamIdx);
             jsonSpikeChInfo->setProperty("source_processor_channel", sourceInfo.channelIDX);
             jsonChannelInfo.add(var(jsonSpikeChInfo));
         }
@@ -261,7 +261,7 @@ void BinaryRecording::openFiles(File rootFolder, int experimentNumber, int recor
         {
             const SpikeChannel* ich = indexedSpikes[i];
             //identical channels (same data and metadata) from the same processor go to the same file
-            if (ch->getSourceNodeID() == ich->getSourceNodeID() && ch->getSubProcessorIdx() == ich->getSubProcessorIdx() && *ch == *ich)
+			if (ch->getSourceNodeID() == ich->getSourceNodeID() && ch->getStreamIdx() == ich->getStreamIdx() && *ch == *ich)
             {
                 found = true;
                 m_spikeFileIndexes.set(sp, i);
@@ -282,7 +282,7 @@ void BinaryRecording::openFiles(File rootFolder, int experimentNumber, int recor
             indexedChannels.add(1);
             ScopedPointer<EventRecording> rec = new EventRecording();
 
-            uint32 procID = GenericProcessor::getProcessorFullId(ch->getSourceNodeID(), ch->getSubProcessorIdx());
+			uint32 procID = GenericProcessor::getProcessorFullId(ch->getSourceNodeID(), ch->getStreamIdx());
             int groupIndex = ++groupMap[procID];
 
             String spikeName = getProcessorString(ch) + "spike_group_" + String(groupIndex) + File::separatorString;
