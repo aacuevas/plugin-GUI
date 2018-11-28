@@ -1284,3 +1284,8 @@ void ChannelCreationIndexes::clearChannelCreationCounts()
 	spikeChannelCount = 0;
 	spikeChannelTypeCount.clear();
 }
+
+unsigned int ProcessorInputSettings::getNumInputStreams() const
+{
+	return numInputStreams;
+}

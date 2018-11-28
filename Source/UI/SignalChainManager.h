@@ -25,12 +25,109 @@
 #define __SIGNALCHAINMANAGER_H_948769B9__
 
 #include "../../JuceLibraryCode/JuceHeader.h"
-#include "../Processors/Editors/GenericEditor.h"
 #include "../AccessClass.h"
+#include <vector>
 
-class GenericEditor;
-class SignalChainTabButton;
-class EditorViewport;
+class GenericProcessor;
+class Port;
+class OutPort;
+class InPort;
+
+/**
+	Class that holds connections to other elements of the graph
+*/
+class Port
+{
+public:
+	Port();
+	virtual ~Port();
+	Port* getConnection() const;
+	virtual unsigned int getNumChannels() const = 0;
+
+	Port(const Port&) = delete;
+	Port& operator=(const Port&) = delete;
+	Port(Port&&) noexcept;
+	Port& operator=(Port&&) noexcept;
+
+protected:
+	/*
+		Connects the port to another. This disconnects the destination port from any other port it might be connected
+		Returns the port the destination port was connected to if any, nullptr if it was unconnected
+	*/
+	Port* connect(Port* dest);
+	Port* disconnect();
+
+private:
+	Port* m_connection;
+};
+
+/**
+Output port for a graph element
+*/
+class OutPort
+	: public Port
+{
+public:
+	OutPort(unsigned int numChannels);
+	virtual ~OutPort();
+	unsigned int getNumChannels() const override;
+	void updateChannelCount(unsigned int numChannels);
+	InPort* connect(InPort* dest);
+	InPort* disconnect();
+private:
+	unsigned int m_numChannels;
+};
+
+/** 
+	Input port for a graph element
+*/
+
+class InPort
+	: public Port
+{
+public:
+	InPort();
+	virtual ~InPort();
+	unsigned int getNumChannels() const override;
+	OutPort* connect(OutPort* dest);
+	OutPort* disconnect();
+
+	virtual bool acceptsConnections() const;
+};
+
+/**
+	Dummy input port for source nodes
+*/
+class SourcePort
+	: public InPort
+{
+public:
+	SourcePort();
+	virtual ~SourcePort();
+	bool acceptsConnections() const override;
+};
+
+/**
+	Graph element that points to each processor
+*/
+class SignalElement
+{
+public:
+	SignalElement(GenericProcessor* proc);
+	~SignalElement();
+	unsigned int getInPorts() const;
+	unsigned int getOutPorts() const;
+	InPort* getInPort(unsigned int) const;
+	OutPort* getOutPort(unsigned int) const;
+	void update();
+
+private:
+	const GenericProcessor const* m_processor;
+	OwnedArray<InPort> m_inputPorts;
+	OwnedArray<OutPort> m_outputPorts;
+};
+
+enum RelativeProcessorPosition { AFTER, BEFORE };
 
 /**
 
@@ -41,57 +138,43 @@ class EditorViewport;
   @see EditorViewport.
 
 */
-
 class SignalChainManager
 {
 public:
-    SignalChainManager(EditorViewport*, Array<GenericEditor*, CriticalSection>&,
-                       Array<SignalChainTabButton*, CriticalSection>&);
-    ~SignalChainManager();
+	SignalChainManager(EditorViewport* ev);
+	~SignalChainManager();
 
-    /** Updates the editors currently displayed by the EditorViewport.*/
-    void updateVisibleEditors(GenericEditor* activeEditor, int index, int insertionPoint, int action);
+	//Assorted methods to manipulate the signal chain
 
-    /** Creates a tab button for a new signal chain. */
-    void createNewTab(GenericEditor* editor);
+	void addProcessor(GenericProcessor* processor, SignalElement* other, RelativeProcessorPosition pos = AFTER);
+	void moveProcessor(GenericProcessor* processor, SignalElement* other, RelativeProcessorPosition pos = AFTER);
+	
+	void addProcessor(GenericProcessor* processor, SignalElement* other, unsigned int porNum, RelativeProcessorPosition pos = AFTER);
+	void moveProcessor(GenericProcessor* processor, SignalElement* other, unsigned int porNum, RelativeProcessorPosition pos = AFTER);
 
-    /** Removes the tab button for a deleted signal chain. */
-    void removeTab(int tabIndex);
+	void addProcessor(GenericProcessor* processor, OutPort* afterPort);
+	void addProcessor(GenericProcessor* processor, InPort* beforePort);
 
-    /** Scrolls the SignalChainTabButtons up, if there are more signal chains
-    than can be viewed at once.*/
-    void scrollUp();
+	void moveProcessor(GenericProcessor* processor, OutPort* afterPort);
+	void moveProcessor(GenericProcessor* processor, InPort* beforePort);
 
-    /** Scrolls the SignalChainTabButtons down, if there are more signal chains
-    than can be viewed at once.*/
-    void scrollDown();
+	void removeProcessor(GenericProcessor* processor);
+	void connectProcessor(GenericProcessor* processorFrom, unsigned int streamFrom, GenericProcessor* processorTo, unsigned int streamTo = 0);
 
-    /** Clears the signal chain.*/
-    void clearSignalChain();
-
+	
 	void updateProcessorSettings();
-
+   
 private:
+	SignalElement* createElement(GenericProcessor* processor);
+	SignalElement* detachElement(GenericProcessor* processor);
 
-    /** An array of all currently visible editors.*/
-    Array<GenericEditor*, CriticalSection>& editorArray;
+	void placeElement(SignalElement* element, OutPort* afterPort);
+	void placeElement(SignalElement* element, InPort* beforePort);
 
-    /** An array of all existing signal chains (as referenced by their associated
-    SignalChainTabButtons).*/
-    Array<SignalChainTabButton*, CriticalSection>& signalChainArray;
-
-    /** A pointer to the EditorViewport.*/
-    EditorViewport* ev;
-
-    /** Updates the visibility of SignalChainTabButtons.*/
-    void refreshTabs();
-
-    /** The index of the top tab (used for scrolling purposes).*/
-    int topTab;
-
-    const int tabSize;
-
-
+	void sanitizeChain();
+	OwnedArray<OutPort> m_startNodes;
+	OwnedArray<SignalElement> m_elements;
+	EditorViewport const* m_ev;
 };
 
 

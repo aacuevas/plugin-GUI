@@ -22,538 +22,366 @@
 */
 
 #include "SignalChainManager.h"
+#include "../Processors/GenericProcessor/GenericProcessor.h"
 
-#include "EditorViewport.h"
-
-#include <iostream>
-
-SignalChainManager::SignalChainManager
-(EditorViewport* ev_,
- Array<GenericEditor*, CriticalSection>& editorArray_,
- Array<SignalChainTabButton*, CriticalSection>& signalChainArray_)
-    : editorArray(editorArray_), signalChainArray(signalChainArray_),
-      ev(ev_), tabSize(30)
+//Port 
+Port::Port()
+	: m_connection(nullptr)
 {
-    topTab = 0;
+}
+
+Port::~Port()
+{
+	disconnect();
+}
+
+Port* Port::getConnection() const
+{
+	return m_connection;
+}
+
+Port* Port::disconnect()
+{
+	Port* old = m_connection;
+	m_connection->m_connection = nullptr;
+	m_connection = nullptr;
+	return old;
+}
+
+Port::Port(Port&& other)
+{
+	other.m_connection->disconnect();
+	other.m_connection = this;
+	m_connection = &other;
+}
+
+Port& Port::operator=(Port&& other)
+{
+	other.m_connection->disconnect();
+	other.m_connection = this;
+	m_connection = &other;
+	return *this;
+}
+
+Port* Port::connect(Port* dest)
+{
+	if (dest == m_connection) return dest;
+	Port* last = m_connection;
+	disconnect();
+	dest->disconnect();
+	m_connection = dest;
+	dest->m_connection = this;
+	return last;
+}
+
+//OutPort
+
+OutPort::OutPort(unsigned int numChannels) : m_numChannels (numChannels)
+{}
+
+OutPort::~OutPort()
+{}
+
+unsigned int OutPort::getNumChannels() const
+{
+	return m_numChannels;
+}
+
+void OutPort::updateChannelCount(unsigned int numChannels)
+{
+	m_numChannels = numChannels;
+}
+
+InPort* OutPort::connect(InPort* dest)
+{
+	return dynamic_cast<InPort*>(Port::connect(dest));
+}
+
+InPort* OutPort::disconnect()
+{
+	return dynamic_cast<InPort*>(Port::disconnect());
+}
+
+//InPort
+
+InPort::InPort()
+{}
+
+InPort::~InPort()
+{}
+
+unsigned int InPort::getNumChannels() const
+{
+	Port* conn = getConnection();
+	if (conn)
+		return conn->getNumChannels();
+	else return 0;
+}
+
+OutPort* InPort::connect(OutPort* dest)
+{
+	return dynamic_cast<OutPort*>(Port::connect(dest));
+}
+
+OutPort* InPort::disconnect()
+{
+	return dynamic_cast<OutPort*>(Port::disconnect());
+}
+
+bool InPort::acceptsConnections() const
+{
+	return true;
+}
+
+//SourcePort
+
+SourcePort::SourcePort()
+{}
+
+SourcePort::~SourcePort()
+{}
+
+bool SourcePort::acceptsConnections() const
+{
+	return false;
+}
+
+//SignalElement
+
+SignalElement::SignalElement(GenericProcessor* proc) : m_processor(proc)
+{
+	proc->m_signalElement = this;
+	update();
+}
+
+SignalElement::~SignalElement()
+{}
+
+unsigned int SignalElement::getInPorts() const
+{
+	return m_inputPorts.size();
+}
+
+unsigned int SignalElement::getOutPorts() const
+{
+	return m_outputPorts.size();
+}
+
+InPort* SignalElement::getInPort(unsigned int idx) const
+{
+	return m_inputPorts[idx];
+}
+
+OutPort* SignalElement::getOutPort(unsigned int idx) const
+{
+	return m_outputPorts[idx];
+}
+
+void SignalElement::update()
+{
+	unsigned int numInputs = m_processor->getNumInputStreams();
+	unsigned int curInputs = m_inputPorts.size();
+
+	if (numInputs > 0) //not a source node
+	{
+		if (curInputs > 0  && !m_inputPorts[0]->acceptsConnections) //if somehow this was a source node but not anymore
+		{
+			m_inputPorts.remove(0);
+			curInputs -= 1;
+		}
+
+		if (numInputs < curInputs)
+			m_inputPorts.removeLast(curInputs - numInputs);
+		else
+		{
+			for (unsigned int i = curInputs; i < numInputs; i++)
+				m_inputPorts.add(new InPort());
+		}
+	}
+	else
+	{
+		if (curInputs > 0) //there were input ports
+		{
+			if (m_inputPorts[0]->acceptsConnections) //if somehow this wasn't a source node but is now
+			{
+				m_inputPorts.clear();
+				m_inputPorts.add(new SourcePort());
+			}
+			//if this was a source node and still is, keep the existing source port
+		}
+		else
+		{
+			m_inputPorts.add(new SourcePort());
+		}
+	}
+
+	unsigned int numOutputs = m_processor->getNumStreams();
+	unsigned int curOutputs = m_outputPorts.size();
+
+	if (numOutputs < curOutputs)
+		m_outputPorts.removeLast(curOutputs - numOutputs);
+	else
+	{
+		for (unsigned int i = curOutputs; i < numOutputs; i++)
+			m_outputPorts.add(new OutPort(m_processor->getNumOutputs(i)));
+	}
+	for (unsigned int i = 0; i < curOutputs; i++)
+		m_outputPorts[i]->updateChannelCount(m_processor->getNumOutputs(i));
+
+}
+
+//SignalChainManager
+
+SignalChainManager::SignalChainManager(EditorViewport* ev) : m_ev(ev)
+{
 }
 
 SignalChainManager::~SignalChainManager()
 {
-
-
 }
 
-void SignalChainManager::scrollUp()
+void SignalChainManager::addProcessor(GenericProcessor* processor, SignalElement* other, RelativeProcessorPosition pos)
 {
-
-    //std::cout << "Scrolling up." << std::endl;
-
-    if (topTab > 0)
-    {
-        topTab -= 1;
-    }
-
-    refreshTabs();
-
+	addProcessor(processor, other, 0, pos);
 }
 
-void SignalChainManager::scrollDown()
+void SignalChainManager::moveProcessor(GenericProcessor* processor, SignalElement* other, RelativeProcessorPosition pos)
 {
-
-    //std::cout << "Scrolling down." << std::endl;
-
-    if (topTab < signalChainArray.size()-4)
-    {
-        topTab += 1;
-    }
-
-    refreshTabs();
-
+	moveProcessor(processor, other, 0, pos);
 }
 
-void SignalChainManager::clearSignalChain()
+void SignalChainManager::addProcessor(GenericProcessor* processor, SignalElement* other, unsigned int porNum, RelativeProcessorPosition pos)
 {
-    editorArray.clear();
-
-    while (signalChainArray.size() > 0)
-    {
-        SignalChainTabButton* t = signalChainArray.remove(signalChainArray.size()-1);
-        deleteAndZero(t);
-    }
-
-}
-
-void SignalChainManager::createNewTab(GenericEditor* editor)
-{
-
-    int index = signalChainArray.size();
-
-    SignalChainTabButton* t = new SignalChainTabButton();
-    t->setManager(this);
-    t->setEditor(editor);
-
-    ev->addChildComponent(t);
-    signalChainArray.add(t);
-
-    editor->tabNumber(signalChainArray.size()-1);
-    t->setToggleState(true, dontSendNotification);
-    t->setNumber(index);
-
-    index -= topTab;
-    ev->leftmostEditor = 0;
-
-    if (signalChainArray.size()-topTab > 4)
-    {
-        scrollDown();
-    }
-
-    refreshTabs();
-
-}
-
-void SignalChainManager::removeTab(int tabIndex)
-{
-
-    SignalChainTabButton* t = signalChainArray.remove(tabIndex);
-    deleteAndZero(t);
-
-    for (int n = 0; n < signalChainArray.size(); n++)
-    {
-        int tNum = signalChainArray[n]->getEditor()->tabNumber();
-
-        if (tNum > tabIndex)
-        {
-            signalChainArray[n]->getEditor()->tabNumber(tNum-1);
-            signalChainArray[n]->setNumber(tNum-1);
-        }
-
-    }
-
-    if (signalChainArray.size()-topTab < 4)
-    {
-        scrollUp();
-    }
-
-    refreshTabs();
-
-}
-
-void SignalChainManager::refreshTabs()
-{
-    for (int n = 0; n < signalChainArray.size(); n++)
-    {
-        if (n >= topTab && n < topTab + 4)
-        {
-            signalChainArray[n]->setVisible(true);
-            signalChainArray[n]->setBounds(6,(tabSize-2)*(n-topTab)+23,tabSize-10,tabSize-10);
-        }
-        else
-        {
-            signalChainArray[n]->setVisible(false);
-        }
-    }
-
-    ev->checkScrollButtons(topTab);
-
-}
-
-
-void SignalChainManager::updateVisibleEditors(GenericEditor* activeEditor,
-                                              int index, int insertionPoint, int action)
-
-{
-
-    enum actions {ADD, MOVE, REMOVE, ACTIVATE, UPDATE};
-
-    // Step 1: update the editor array
-    if (action == ADD)
-    {
-        //std::cout << "    Adding editor." << std::endl;
-        editorArray.insert(insertionPoint, activeEditor);
-
-    }
-    else if (action == MOVE)
-    {
-        // std::cout << "    Moving editors." << std::endl;
-        if (insertionPoint < index)
-            editorArray.move(index, insertionPoint);
-        else if (insertionPoint > index)
-            editorArray.move(index, insertionPoint-1);
-
-    }
-    else if (action == REMOVE)
-    {
-
-        // std::cout << "    Removing editor." << std::endl;
-
-        GenericProcessor* p = (GenericProcessor*) editorArray[index]->getProcessor();
-
-        // GenericProcessor* source = p->getSourceNode();
-        if (p->getSourceNode() != nullptr)
-            if (p->getSourceNode()->isSplitter())
-                p->getSourceNode()->setSplitterDestNode(nullptr);
-
-        // if the processor to be removed is a merger,
-        // we need to inform the other source that its merger has disappeared
-        if (p->isMerger())
-        {
-            p->switchIO();
-            if (p->getSourceNode() != nullptr)
-                p->getSourceNode()->setDestNode(nullptr);
-        }
-
-        // if the processor to be removed is a splitter, we need to make sure
-        // there aren't any orphaned processors
-        if (p->isSplitter())
-        {
-            p->switchIO(0);
-            if (p->getDestNode() != nullptr)
-            {
-                //   std::cout << "Found an orphaned signal chain" << std::endl;
-                p->getDestNode()->setSourceNode(nullptr);
-                createNewTab(p->getDestNode()->getEditor());
-            }
-
-            p->switchIO(1);
-            if (p->getDestNode() != nullptr)
-            {
-                //   std::cout << "Found an orphaned signal chain" << std::endl;
-                p->getDestNode()->setSourceNode(nullptr);
-                createNewTab(p->getDestNode()->getEditor());
-            }
-        }
-
-        editorArray.remove(index);
-
-        int t = activeEditor->tabNumber();
-
-        // std::cout << editorArray.size() << " " << t << std::endl;
-
-		bool merger = false;
-
-        if (editorArray.size() > 0)
-        {
-            // take the next processor in the array
-            GenericProcessor* p2 = (GenericProcessor*) editorArray[0]->getProcessor();
-            merger = (p2->isMerger() && p2->stillHasSource());
-            if (p2->isMerger())
-            {
-                //  std::cout << "We've got a merger!" << std::endl;
-                //p2->switchIO(0);
-                p2->setMergerSourceNode(p->getSourceNode());
-				if (p2->stillHasSource())
-				{
-					MergerEditor* me = static_cast<MergerEditor*>(p2->getEditor());
-					me->switchSource();
-				}
-                // p2->setMergerSourceNode(nullptr);
-            }
-        }
-
-        if (editorArray.size() > 0 && !merger) // if there are still editors in this chain
-        {
-            if (t > -1)  // pass on tab
-            {
-                //      std::cout << "passing on the tab." << std::endl;
-                int nextEditor = jmax(0,0);//index-1);
-                editorArray[nextEditor]->tabNumber(t);
-                signalChainArray[t]->setEditor(editorArray[nextEditor]);
-            }
-
-            int nextEditor = jmin(index,editorArray.size()-1);
-            activeEditor = editorArray[nextEditor];
-            activeEditor->select();
-            //activeEditor->grabKeyboardFocus();
-
-        }
-        else
-        {
-
-            // std::cout << "Tab number " << t << std::endl;
-
-            removeTab(t);
-
-            if (signalChainArray.size() > 0) // if there are other chains
-            {
-                int nextTab = jmin(t,signalChainArray.size()-1);
-                activeEditor = signalChainArray[nextTab]->getEditor();
-                activeEditor->select();
-                signalChainArray[nextTab]->setToggleState(true, dontSendNotification); // send it back to update connections
-            }
-            else
-            {
-                activeEditor = 0; // nothing is active
-                //  signalChainNeedsSource = true;
-            }
-        }
-
-    }
-    else     //no change
-    {
-
-        // std::cout << "Activating editor" << std::endl;
-    }
-
-    // Step 2: update connections
-    if (action != ACTIVATE && action != UPDATE && editorArray.size() > 0)
-    {
-
-        // std::cout << "Updating connections." << std::endl;
-
-        GenericProcessor* source = 0;
-        GenericProcessor* dest = (GenericProcessor*) editorArray[0]->getProcessor();
-
-        dest->setSourceNode(source);
-
-        for (int n = 1; n < editorArray.size(); n++)
-        {
-
-            dest = (GenericProcessor*) editorArray[n]->getProcessor();
-            source = (GenericProcessor*) editorArray[n-1]->getProcessor();
-
-            dest->setSourceNode(source);
-        }
-
-        dest->setDestNode(0);
-
-    }
-
-    // Step 3: check for new tabs
-    if (action != ACTIVATE && action != UPDATE)
-    {
-
-        //  std::cout << "Checking for new tabs." << std::endl;
-
-        for (int n = 0; n < editorArray.size(); n++)
-        {
-            GenericProcessor* p = (GenericProcessor*) editorArray[n]->getProcessor();
-
-            if (p->getSourceNode() == 0)// && editorArray[n]->tabNumber() == -1)
-            {
-
-                if (editorArray[n]->tabNumber() == -1)
-
-                {
-                    if (!p->isMerger())
-                    {
-                        //   std::cout << p->getName() << " has no source node. Creating a new tab." << std::endl;
-                        createNewTab(editorArray[n]);
-                    }
-                }
-
-            }
-            else
-            {
-                if (editorArray[n]->tabNumber() > -1)
-                {
-                    removeTab(editorArray[n]->tabNumber());
-                }
-
-                editorArray[n]->tabNumber(-1); // reset tab status
-            }
-
-            if (p->isMerger())
-            {
-                // std::cout << "It's a merger!" << std::endl;
-                //createNewTab(editorArray[n]);
-            }
-        }
-    }
-
-    // Step 4: Refresh editors in editor array, based on active editor
-    for (int n = 0; n < editorArray.size(); n++)
-    {
-        editorArray[n]->setVisible(false);
-    }
-
-    editorArray.clear();
-    // std::cout << "Cleared editor array." << std::endl;
-
-    GenericEditor* editorToAdd = activeEditor;
-
-    while (editorToAdd != 0)
-    {
-        // std::cout << "Inserting " << editorToAdd->getName() << " at point 0." << std::endl;
-
-        editorArray.insert(0,editorToAdd);
-        GenericProcessor* currentProcessor = (GenericProcessor*) editorToAdd->getProcessor();
-        GenericProcessor* source = currentProcessor->getSourceNode();
-
-        if (source != nullptr)
-        {
-            //   std::cout << "Source: " << source->getName() << std::endl;
-
-            // need to switch the splitter somehow
-            if (action == ACTIVATE || action == UPDATE)
-            {
-                if (source->isSplitter())
-                {
-                    source->setPathToProcessor(currentProcessor);
-                }
-            }
-
-            editorToAdd = (GenericEditor*) source->getEditor();
-
-        }
-        else
-        {
-
-            if (editorToAdd->tabNumber() >= 0 && editorToAdd->tabNumber() < signalChainArray.size())
-                signalChainArray[editorToAdd->tabNumber()]->setToggleState(true, dontSendNotification);
-
-            // std::cout << "No source found." << std::endl;
-            editorToAdd = 0;
-
-        }
-    }
-
-    editorToAdd = activeEditor;
-
-    while (editorToAdd != 0)
-    {
-
-        GenericProcessor* currentProcessor = (GenericProcessor*) editorToAdd->getProcessor();
-        GenericProcessor* dest = currentProcessor->getDestNode();
-
-        if (dest != 0)
-        {
-
-            //   std::cout << "Destination: " << dest->getName() << std::endl;
-            editorToAdd = (GenericEditor*) dest->getEditor();
-            editorArray.add(editorToAdd);
-            //   std::cout << "Inserting " << editorToAdd->getName() << " at the end." << std::endl;
-
-            if (dest->isMerger())
-            {
-                //    std::cout << "It's a merger!" << std::endl;
-
-                editorToAdd->switchIO(0);
-
-                if (dest->getSourceNode() != currentProcessor)
-                    editorToAdd->switchIO(1);
-
-            }
-
-        }
-        else
-        {
-            //   std::cout << "No dest found." << std::endl;
-            editorToAdd = 0;
-        }
-
-
-    }
-
-    // Step 5: check the validity of the signal chain
-    if (true)
-    {
-        //action != ACTIVATE) {
-        bool enable = true;
-
-        if (editorArray.size() == 1)
-        {
-
-            GenericProcessor* source = (GenericProcessor*) editorArray[0]->getProcessor();
-            if (source->isSource())
-                editorArray[0]->setEnabledState(true);
-            else
-                editorArray[0]->setEnabledState(false);
-
-        }
-        else
-        {
-
-            for (int n = 0; n < editorArray.size()-1; n++)
-            {
-                GenericProcessor* source = (GenericProcessor*) editorArray[n]->getProcessor();
-                GenericProcessor* dest = (GenericProcessor*) editorArray[n+1]->getProcessor();
-
-                if (n == 0 && !source->isSource())
-                    enable = false;
-
-                editorArray[n]->setEnabledState(enable);
-
-                if (source->canSendSignalTo(dest) && source->isEnabledState())
-                    enable = true;
-                else
-                    enable = false;
-
-                if (source->isSplitter())
-                {
-                    if (source->getDestNode() != dest)
-                    {
-                        //source->switchIO();
-                        editorArray[n]->switchDest();
-                    }
-                }
-
-                //   if (enable)
-                //      std::cout << "Enabling node." << std::endl;
-                //   else
-                //     std::cout << "Not enabling node." << std::endl;
-
-                editorArray[n+1]->setEnabledState(enable);
-
-            }
-        }
-    }
-
-    // Step 6: inform the tabs that something has changed
-    for (int n = 0; n < signalChainArray.size(); n++)
-    {
-        if (signalChainArray[n]->getToggleState())
-        {
-            signalChainArray[n]->hasNewConnections(true);
-        }
-    }
-
-    // Step 7: update all settings
-    if (action != ACTIVATE)
-    {
-
-		updateProcessorSettings();
-    }
-
-
-    // std::cout << "Finished adding new editor." << std::endl << std::endl << std::endl;
-
-}
-
-void SignalChainManager::updateProcessorSettings()
-{
-	// std::cout << "Updating settings." << std::endl;
-
-	Array<GenericProcessor*> splitters;
-
-	for (int n = 0; n < signalChainArray.size(); n++)
+	if (pos == AFTER)
 	{
-		// iterate through signal chains
+		OutPort* port = other ? other->getOutPort(0) : nullptr;
+		addProcessor(processor, port);
+	}
+	else if (pos == BEFORE)
+	{
+		InPort* port = other ? other->getInPort(0) : nullptr;
+		addProcessor(processor, port);
+	}
+}
 
-		GenericEditor* source = signalChainArray[n]->getEditor();
-		GenericProcessor* p = source->getProcessor();
+void SignalChainManager::moveProcessor(GenericProcessor* processor, SignalElement* other, unsigned int porNum, RelativeProcessorPosition pos)
+{
+	if (pos == AFTER)
+	{
+		OutPort* port = other ? other->getOutPort(0) : nullptr;
+		moveProcessor(processor, port);
+	}
+	else if (pos == BEFORE)
+	{
+		InPort* port = other ? other->getInPort(0) : nullptr;
+		moveProcessor(processor, port);
+	}
+}
 
-		//  p->update();
+void SignalChainManager::placeElement(SignalElement* element, OutPort* afterPort)
+{
+	if (afterPort)
+	{
+		InPort* old = afterPort->connect(element->getInPort(0));
+		old->connect(element->getOutPort(0));
+	}
+	sanitizeChain();
+}
 
-		//  GenericProcessor* dest = p->getDestNode();
+void SignalChainManager::placeElement(SignalElement* element, InPort* beforePort)
+{
+	if (beforePort)
+	{
+		OutPort* old = beforePort->connect(element->getOutPort(0));
+		old->connect(element->getInPort(0));
+	}
+	sanitizeChain();
+}
 
-		while (p != 0)
+void SignalChainManager::addProcessor(GenericProcessor* processor, InPort* port)
+{
+	SignalElement* element = createElement(processor);
+	placeElement(element, port);
+}
+
+void SignalChainManager::addProcessor(GenericProcessor* processor, OutPort* port)
+{
+	SignalElement* element = createElement(processor);
+	placeElement(element, port);
+}
+
+void SignalChainManager::moveProcessor(GenericProcessor* processor, InPort* port)
+{
+	SignalElement* element = detachElement(processor);
+	placeElement(element, port);
+}
+
+void SignalChainManager::moveProcessor(GenericProcessor* processor, OutPort* port)
+{
+	SignalElement* element = detachElement(processor);
+	placeElement(element, port);
+}
+
+SignalElement* SignalChainManager::createElement(GenericProcessor* processor)
+{
+	SignalElement* element = new SignalElement(processor);
+	m_elements.add(element);
+	return element;
+}
+
+SignalElement* SignalChainManager::detachElement(GenericProcessor* processor)
+{
+	SignalElement* element = processor->getSignalElement();
+
+	//connect the first input and output ports together. Anything else will be left dangling
+	OutPort* previous = element->getInPort(0)->disconnect();
+	InPort* next = element->getOutPort(0)->disconnect();
+	previous->connect(next);
+
+	//disconnect everything else
+	unsigned int numInPorts = element->getInPorts();
+	for (unsigned int i = 1; i < numInPorts; i++)
+		element->getInPort(i)->disconnect();
+
+	unsigned int numOutPorts = element->getOutPorts();
+	for (unsigned int i = 1; i < numOutPorts; i++)
+		element->getOutPort(i)->disconnect();
+
+	return element;
+	
+}
+
+void SignalChainManager::sanitizeChain()
+{
+	//remove empty chains
+	unsigned int numStart = m_startNodes.size();
+	for (unsigned int i = 0; i < numStart; i++)
+	{
+		if (m_startNodes[i]->getConnection() == nullptr)
 		{
-			// iterate through processors
-			p->update();
+			//this way of removing elements is not the most optimized way, but there will never be enough chains for this to be a performance issue
+			m_startNodes.remove(i);
+			--i;
+			--numStart;
+		}
+	}
 
-			if (p->isSplitter())
+	//create a new chain for any dangling input
+	unsigned int numNodes = m_elements.size();
+	for (unsigned int i = 0; i < numNodes; i++)
+	{
+		SignalElement* element = m_elements[i];
+		unsigned int numPorts = element->getInPorts();
+		for (unsigned int j = 0; j < numPorts; j++)
+		{
+			InPort* port = element->getInPort(j);
+			if (port->getConnection() == nullptr)
 			{
-				splitters.add(p);
-			}
+				//Create new source
+				OutPort* start = new OutPort(0);
+				m_startNodes.add(start);
 
-			p = p->getDestNode();
-
-			if (p == 0 && splitters.size() > 0)
-			{
-				splitters.getFirst()->switchIO(); // switch the signal chain
-				p = splitters[0]->getDestNode();
-				splitters.getFirst()->switchIO(); // switch it back
-				splitters.remove(0);
+				start->connect(port);
 			}
 		}
 	}

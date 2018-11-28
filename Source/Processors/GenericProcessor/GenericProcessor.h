@@ -65,6 +65,25 @@ private:
 	std::unordered_map<SpikeChannel::ElectrodeTypes, int, std::hash<int>> spikeChannelTypeCount;
 };
 
+class SignalElement;
+
+class ProcessorSignalElement
+{
+public:
+	friend class SignalElement;
+	SignalElement* getSignalElement();
+private:
+	SignalElement* m_signalElement;
+};
+
+class ProcessorInputSettings
+{
+public:
+	unsigned int getNumInputStreams() const;
+private:
+	unsigned int numInputStreams{ 1 };
+};
+
 
 namespace AccessClass
 {
@@ -89,6 +108,8 @@ namespace AccessClass
 class PLUGIN_API GenericProcessor   : public AudioProcessor
                                     , public PluginClass
 									, public ChannelCreationIndexes
+									, public ProcessorInputSettings
+									, public ProcessorSignalElement
 {
 	friend AccessClass::ExternalProcessorAccessor;
 public:
