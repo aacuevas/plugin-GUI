@@ -24,7 +24,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define MULTISTREAMTESTER_H_INCLUDED
 
 #include <DataThreadHeaders.h>
-#include <array>
 
 class MultiStreamTester : public DataThread
 {
@@ -59,7 +58,7 @@ private:
 	uint64 m_fakeEvent;
 	int64 m_ticksPerSecond;
 	Array<float> m_factors;
-	std::array<float, 512> m_tmp;
+	HeapBlock<float> m_tmp;
 };
 
 

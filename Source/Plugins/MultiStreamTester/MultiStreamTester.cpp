@@ -29,13 +29,19 @@ MultiStreamTester::MultiStreamTester(SourceNode* sn)
 	: DataThread(sn)
 {
 	//Add as many streams as needed
-	m_waves.add(WaveInfo(5, 30000, 16, 600));
-	m_waves.add(WaveInfo(2, 2500, 16, 600));
+	m_waves.add(WaveInfo(5, 30000, 1024, 600));
+	m_waves.add(WaveInfo(10, 30000, 1024, 600));
+	m_waves.add(WaveInfo(2, 30000, 1024, 600));
+	//m_waves.add(WaveInfo(2, 2500, 16, 600));
 
+	unsigned int maxChannels = 0;
 	for (int i = 0; i < m_waves.size(); i++)
 	{
 		sourceBuffers.add(new DataBuffer(m_waves[i].numChannels, 8192));
+		if (m_waves[i].numChannels > maxChannels)
+			maxChannels = m_waves[i].numChannels;
 	}
+	m_tmp.malloc(maxChannels);
 	m_fakeEvent = 0;
 }
 
@@ -61,8 +67,8 @@ bool MultiStreamTester::updateBuffer()
 			{
 				int64 curSample = lastSample + sample;
 				float value = 1000 * sinf(m_factors[s] * curSample);
-				std::fill_n(m_tmp.begin(), m_waves[s].numChannels, value);
-				sourceBuffers[s]->addToBuffer(m_tmp.data(), &curSample, &m_fakeEvent, 1);
+				std::fill_n(m_tmp.getData(), m_waves[s].numChannels, value);
+				sourceBuffers[s]->addToBuffer(m_tmp.getData(), &curSample, &m_fakeEvent, 1);
 			}
 			m_lastSample.set(s, lastSample + numSamples);
 		}
