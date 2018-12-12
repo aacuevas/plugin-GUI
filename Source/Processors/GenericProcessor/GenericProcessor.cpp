@@ -1216,6 +1216,8 @@ void GenericProcessor::stopRecording()  { }
 
 void GenericProcessor::updateSettings() { }
 
+void GenericProcessor::updateStreamCount() { }
+
 void GenericProcessor::enableCurrentChannel (bool) {}
 
 void GenericProcessor::handleEvent(const EventChannel* eventInfo, const MidiMessage& event, int samplePosition) {}

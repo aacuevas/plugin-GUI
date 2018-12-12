@@ -150,12 +150,16 @@ bool SourcePort::acceptsConnections() const
 
 SignalElement::SignalElement(GenericProcessor* proc) : m_processor(proc)
 {
-	proc->m_signalElement = this;
-	update();
+	if (proc)
+		proc->m_signalElement = this;
+	updateConnections();
 }
 
 SignalElement::~SignalElement()
-{}
+{
+	if (m_processor)
+		m_processor->m_signalElement = nullptr;
+}
 
 unsigned int SignalElement::getInPorts() const
 {
@@ -177,57 +181,82 @@ OutPort* SignalElement::getOutPort(unsigned int idx) const
 	return m_outputPorts[idx];
 }
 
-void SignalElement::update()
+void SignalElement::updateConnections()
 {
-	unsigned int numInputs = m_processor->getNumInputStreams();
-	unsigned int curInputs = m_inputPorts.size();
-
-	if (numInputs > 0) //not a source node
+	if (m_processor)
 	{
-		if (curInputs > 0  && !m_inputPorts[0]->acceptsConnections) //if somehow this was a source node but not anymore
-		{
-			m_inputPorts.remove(0);
-			curInputs -= 1;
-		}
+		m_processor->updateStreamCount();
+		unsigned int numInputs = m_processor->getNumInputStreams();
+		unsigned int curInputs = m_inputPorts.size();
 
-		if (numInputs < curInputs)
-			m_inputPorts.removeLast(curInputs - numInputs);
+		if (numInputs > 0) //not a source node
+		{
+			if (curInputs > 0 && !m_inputPorts[0]->acceptsConnections) //if somehow this was a source node but not anymore
+			{
+				m_inputPorts.remove(0);
+				curInputs -= 1;
+			}
+
+			if (numInputs < curInputs)
+				m_inputPorts.removeLast(curInputs - numInputs);
+			else
+			{
+				for (unsigned int i = curInputs; i < numInputs; i++)
+					m_inputPorts.add(new InPort());
+			}
+		}
 		else
 		{
-			for (unsigned int i = curInputs; i < numInputs; i++)
-				m_inputPorts.add(new InPort());
-		}
-	}
-	else
-	{
-		if (curInputs > 0) //there were input ports
-		{
-			if (m_inputPorts[0]->acceptsConnections) //if somehow this wasn't a source node but is now
+			if (curInputs > 0) //there were input ports
 			{
-				m_inputPorts.clear();
+				if (m_inputPorts[0]->acceptsConnections) //if somehow this wasn't a source node but is now
+				{
+					m_inputPorts.clear();
+					m_inputPorts.add(new SourcePort());
+				}
+				//if this was a source node and still is, keep the existing source port
+			}
+			else
+			{
 				m_inputPorts.add(new SourcePort());
 			}
-			//if this was a source node and still is, keep the existing source port
 		}
+
+		unsigned int numOutputs = m_processor->getNumStreams();
+		unsigned int curOutputs = m_outputPorts.size();
+
+		if (numOutputs < curOutputs)
+			m_outputPorts.removeLast(curOutputs - numOutputs);
 		else
 		{
-			m_inputPorts.add(new SourcePort());
+			for (unsigned int i = curOutputs; i < numOutputs; i++)
+				m_outputPorts.add(new OutPort(0));
 		}
 	}
-
-	unsigned int numOutputs = m_processor->getNumStreams();
-	unsigned int curOutputs = m_outputPorts.size();
-
-	if (numOutputs < curOutputs)
-		m_outputPorts.removeLast(curOutputs - numOutputs);
-	else
+	else //Start nodes have no processor, just indicate the beggining of a graph
 	{
-		for (unsigned int i = curOutputs; i < numOutputs; i++)
-			m_outputPorts.add(new OutPort(m_processor->getNumOutputs(i)));
+		m_inputPorts.clear(); //just in case
+		if (m_outputPorts.size() != 1)
+		{
+			m_outputPorts.clear();
+			m_outputPorts.add(new OutPort(0));
+		}
 	}
-	for (unsigned int i = 0; i < curOutputs; i++)
-		m_outputPorts[i]->updateChannelCount(m_processor->getNumOutputs(i));
+}
 
+void SignalElement::updateChannelCounts()
+{
+	if (m_processor)
+	{
+		int numOutputs = m_processor->getNumStreams();
+		for (unsigned int i = 0; i < numOutputs; i++)
+			m_outputPorts[i]->updateChannelCount(m_processor->getNumOutputs(i));
+	}
+}
+
+const GenericProcessor* SignalElement::getProcessor()
+{
+	return m_processor;
 }
 
 //SignalChainManager
@@ -357,7 +386,7 @@ void SignalChainManager::sanitizeChain()
 	unsigned int numStart = m_startNodes.size();
 	for (unsigned int i = 0; i < numStart; i++)
 	{
-		if (m_startNodes[i]->getConnection() == nullptr)
+		if (m_startNodes[i]->getOutPort(0)->getConnection() == nullptr)
 		{
 			//this way of removing elements is not the most optimized way, but there will never be enough chains for this to be a performance issue
 			m_startNodes.remove(i);
@@ -378,11 +407,38 @@ void SignalChainManager::sanitizeChain()
 			if (port->getConnection() == nullptr)
 			{
 				//Create new source
-				OutPort* start = new OutPort(0);
+				SignalElement* start = new SignalElement(nullptr);
 				m_startNodes.add(start);
 
-				start->connect(port);
+				start->getOutPort(0)->connect(port);
 			}
 		}
 	}
+}
+
+void SignalChainManager::removeProcessor(GenericProcessor* processor)
+{
+	SignalElement* element = detachElement(processor);
+	m_elements.removeObject(element);
+}
+
+void SignalChainManager::updateSignalChain()
+{
+	updateChainConnectivity();
+	updateProcessorSettings();
+}
+
+void SignalChainManager::updateChainConnectivity()
+{
+	int numElements = m_elements.size();
+	for (int i = 0; i < numElements; i++)
+	{
+		SignalElement *elm = m_elements[i];
+		elm->updateConnections();
+	}
+}
+
+void SignalChainManager::updateProcessorSettings()
+{
+
 }

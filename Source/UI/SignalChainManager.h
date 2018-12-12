@@ -119,10 +119,12 @@ public:
 	unsigned int getOutPorts() const;
 	InPort* getInPort(unsigned int) const;
 	OutPort* getOutPort(unsigned int) const;
-	void update();
+	void updateConnections();
+	void updateChannelCounts();
+	const GenericProcessor* getProcessor();
 
 private:
-	const GenericProcessor const* m_processor;
+	GenericProcessor *const m_processor;
 	OwnedArray<InPort> m_inputPorts;
 	OwnedArray<OutPort> m_outputPorts;
 };
@@ -161,8 +163,14 @@ public:
 	void removeProcessor(GenericProcessor* processor);
 	void connectProcessor(GenericProcessor* processorFrom, unsigned int streamFrom, GenericProcessor* processorTo, unsigned int streamTo = 0);
 
-	
+	/** This method calls both the connectivity update and the settings update*/
+	void updateSignalChain();
+
+	void updateChainConnectivity();
 	void updateProcessorSettings();
+	
+
+	
    
 private:
 	SignalElement* createElement(GenericProcessor* processor);
@@ -172,7 +180,7 @@ private:
 	void placeElement(SignalElement* element, InPort* beforePort);
 
 	void sanitizeChain();
-	OwnedArray<OutPort> m_startNodes;
+	OwnedArray<SignalElement> m_startNodes;
 	OwnedArray<SignalElement> m_elements;
 	EditorViewport const* m_ev;
 };

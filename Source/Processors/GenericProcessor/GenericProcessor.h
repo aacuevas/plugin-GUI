@@ -557,6 +557,12 @@ public:
 		String identifier;
 	};
 
+	/**
+	This method gets called before updateSettings and can be used to alter the number of streams, which could cause the chain structure to be change
+	This method is called in an unordely fashion, so its result should not depend on connected processors.
+	*/
+	virtual void updateStreamCount();
+
 protected:
 	/** Used to set the timestamp for a given buffer, for a given source node. */
 	void setTimestampAndSamples(juce::uint64 timestamp, uint32 nSamples, int streamIdx = 0);
