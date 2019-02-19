@@ -25,8 +25,7 @@
 #include "../Processors/GenericProcessor/GenericProcessor.h"
 
 //Port 
-Port::Port()
-	: m_connection(nullptr)
+Port::Port(SignalElement* element) : m_connection(nullptr), m_element(element)
 {
 }
 
@@ -48,20 +47,26 @@ Port* Port::disconnect()
 	return old;
 }
 
-Port::Port(Port&& other)
+SignalElement* Port::getSignalElement() const
 {
-	other.m_connection->disconnect();
-	other.m_connection = this;
-	m_connection = &other;
+	return m_element;
 }
 
-Port& Port::operator=(Port&& other)
+/*Port::Port(Port&& other) : m_element(other.m_element)
 {
 	other.m_connection->disconnect();
 	other.m_connection = this;
 	m_connection = &other;
+}*/
+
+/*Port& Port::operator=(Port&& other) 
+{
+	other.m_connection->disconnect();
+	other.m_connection = this;
+	m_connection = &other;
+	m_element.
 	return *this;
-}
+}*/
 
 Port* Port::connect(Port* dest)
 {
@@ -76,7 +81,8 @@ Port* Port::connect(Port* dest)
 
 //OutPort
 
-OutPort::OutPort(unsigned int numChannels) : m_numChannels (numChannels)
+OutPort::OutPort(SignalElement* element, unsigned int numChannels) : 
+	Port(element), m_numChannels(numChannels)
 {}
 
 OutPort::~OutPort()
@@ -104,7 +110,7 @@ InPort* OutPort::disconnect()
 
 //InPort
 
-InPort::InPort()
+InPort::InPort(SignalElement* element) : Port(element)
 {}
 
 InPort::~InPort()
@@ -135,7 +141,7 @@ bool InPort::acceptsConnections() const
 
 //SourcePort
 
-SourcePort::SourcePort()
+SourcePort::SourcePort(SignalElement* element) : InPort(element)
 {}
 
 SourcePort::~SourcePort()
@@ -202,7 +208,7 @@ void SignalElement::updateConnections()
 			else
 			{
 				for (unsigned int i = curInputs; i < numInputs; i++)
-					m_inputPorts.add(new InPort());
+					m_inputPorts.add(new InPort(this));
 			}
 		}
 		else
@@ -212,13 +218,13 @@ void SignalElement::updateConnections()
 				if (m_inputPorts[0]->acceptsConnections) //if somehow this wasn't a source node but is now
 				{
 					m_inputPorts.clear();
-					m_inputPorts.add(new SourcePort());
+					m_inputPorts.add(new SourcePort(this));
 				}
 				//if this was a source node and still is, keep the existing source port
 			}
 			else
 			{
-				m_inputPorts.add(new SourcePort());
+				m_inputPorts.add(new SourcePort(this));
 			}
 		}
 
@@ -230,7 +236,7 @@ void SignalElement::updateConnections()
 		else
 		{
 			for (unsigned int i = curOutputs; i < numOutputs; i++)
-				m_outputPorts.add(new OutPort(0));
+				m_outputPorts.add(new OutPort(this, 0));
 		}
 	}
 	else //Start nodes have no processor, just indicate the beggining of a graph
@@ -239,7 +245,7 @@ void SignalElement::updateConnections()
 		if (m_outputPorts.size() != 1)
 		{
 			m_outputPorts.clear();
-			m_outputPorts.add(new OutPort(0));
+			m_outputPorts.add(new OutPort(this, 0));
 		}
 	}
 }
@@ -254,9 +260,33 @@ void SignalElement::updateChannelCounts()
 	}
 }
 
-const GenericProcessor* SignalElement::getProcessor()
+GenericProcessor* SignalElement::getProcessor() const
 {
 	return m_processor;
+}
+
+unsigned int SignalElement::getConnectedInPorts() const
+{
+	int numPorts = m_inputPorts.size();
+	unsigned int count = 0;
+	for (int i = 0; i < numPorts; i++)
+	{
+		if (m_inputPorts[i]->getConnection())
+			count++;
+	}
+	return count;
+}
+
+unsigned int SignalElement::getConnectedOutPorts() const
+{
+	int numPorts = m_outputPorts.size();
+	unsigned int count = 0;
+	for (int i = 0; i < numPorts; i++)
+	{
+		if (m_outputPorts[i]->getConnection())
+			count++;
+	}
+	return count;
 }
 
 //SignalChainManager
@@ -420,6 +450,7 @@ void SignalChainManager::removeProcessor(GenericProcessor* processor)
 {
 	SignalElement* element = detachElement(processor);
 	m_elements.removeObject(element);
+	sanitizeChain();
 }
 
 void SignalChainManager::updateSignalChain()
@@ -436,9 +467,51 @@ void SignalChainManager::updateChainConnectivity()
 		SignalElement *elm = m_elements[i];
 		elm->updateConnections();
 	}
+	sanitizeChain();
 }
 
 void SignalChainManager::updateProcessorSettings()
 {
+	//First reset connection counts
+	int numElements = m_elements.size();
+	for (int i = 0; i < numElements; i++)
+	{
+		SignalElement *elm = m_elements[i];
+		elm->updatedCount = elm->getConnectedInPorts();
+	}
 
+	int numStartNodes = m_startNodes.size();
+	for (int i = 0; i < numStartNodes; i++)
+	{
+		Port* port = m_startNodes[i]->getOutPort(0)->getConnection();
+		if (port)
+		{
+			SignalElement *elm = port->getSignalElement();
+			recursiveUpdate(elm);
+		}
+	}
+}
+
+void SignalChainManager::recursiveUpdate(SignalElement* element)
+{
+	if (!element) return;
+	element->updatedCount--;
+
+	//if the counter reachs zero, all inputs have been processed and the element can be processed
+	//if not, it will be ignored. Other branches will reach it and it will eventually be processed
+	//it should never be less than zero, but if that were the case it will be also ignored to avoid double setups
+	if (element->updatedCount == 0)
+	{
+		element->getProcessor()->update();
+		int numPorts = element->getOutPorts();
+		for (int i = 0; i < numPorts; i++)
+		{
+			Port* port = element->getOutPort(i)->getConnection();
+			if (port)
+			{
+				SignalElement* elm = port->getSignalElement();
+				recursiveUpdate(elm);
+			}
+		}
+	}
 }

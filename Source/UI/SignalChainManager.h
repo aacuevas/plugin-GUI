@@ -32,6 +32,8 @@ class GenericProcessor;
 class Port;
 class OutPort;
 class InPort;
+class SignalElement;
+class SignalChainManager;
 
 /**
 	Class that holds connections to other elements of the graph
@@ -39,15 +41,16 @@ class InPort;
 class Port
 {
 public:
-	Port();
+	Port(SignalElement* element);
 	virtual ~Port();
 	Port* getConnection() const;
 	virtual unsigned int getNumChannels() const = 0;
+	SignalElement* getSignalElement() const;
 
 	Port(const Port&) = delete;
 	Port& operator=(const Port&) = delete;
-	Port(Port&&) noexcept;
-	Port& operator=(Port&&) noexcept;
+	Port(Port&&) = delete;
+	Port& operator=(Port&&) = delete;
 
 protected:
 	/*
@@ -59,6 +62,7 @@ protected:
 
 private:
 	Port* m_connection;
+	SignalElement* const m_element;
 };
 
 /**
@@ -68,7 +72,7 @@ class OutPort
 	: public Port
 {
 public:
-	OutPort(unsigned int numChannels);
+	OutPort(SignalElement* element, unsigned int numChannels);
 	virtual ~OutPort();
 	unsigned int getNumChannels() const override;
 	void updateChannelCount(unsigned int numChannels);
@@ -86,7 +90,7 @@ class InPort
 	: public Port
 {
 public:
-	InPort();
+	InPort(SignalElement* element);
 	virtual ~InPort();
 	unsigned int getNumChannels() const override;
 	OutPort* connect(OutPort* dest);
@@ -102,15 +106,25 @@ class SourcePort
 	: public InPort
 {
 public:
-	SourcePort();
+	SourcePort(SignalElement* element);
 	virtual ~SourcePort();
 	bool acceptsConnections() const override;
 };
 
 /**
+	Holds some variables for chain update
+*/
+class ChainUpdateHelper
+{
+	friend class SignalChainManager;
+private:
+	int updatedCount;
+};
+
+/**
 	Graph element that points to each processor
 */
-class SignalElement
+class SignalElement : public ChainUpdateHelper
 {
 public:
 	SignalElement(GenericProcessor* proc);
@@ -121,7 +135,9 @@ public:
 	OutPort* getOutPort(unsigned int) const;
 	void updateConnections();
 	void updateChannelCounts();
-	const GenericProcessor* getProcessor();
+	GenericProcessor* getProcessor() const;
+	unsigned int getConnectedInPorts() const;
+	unsigned int getConnectedOutPorts() const;
 
 private:
 	GenericProcessor *const m_processor;
@@ -179,10 +195,13 @@ private:
 	void placeElement(SignalElement* element, OutPort* afterPort);
 	void placeElement(SignalElement* element, InPort* beforePort);
 
+	void recursiveUpdate(SignalElement* element);
+
 	void sanitizeChain();
 	OwnedArray<SignalElement> m_startNodes;
 	OwnedArray<SignalElement> m_elements;
 	EditorViewport const* m_ev;
+
 };
 
 
