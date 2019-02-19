@@ -23,6 +23,7 @@
 #include "GenericProcessor.h"
 #include "../../UI/UIComponent.h"
 #include "../../AccessClass.h"
+#include "../../UI/SignalChainManager.h"
 
 #include <exception>
 
@@ -30,9 +31,7 @@
 const String GenericProcessor::m_unusedNameString ("xxx-UNUSED-OPEN-EPHYS-xxx");
 
 GenericProcessor::GenericProcessor (const String& name)
-    : sourceNode                    (0)
-    , destNode                      (0)
-    , isEnabled                     (true)
+    : isEnabled                     (true)
     , wasConnected                  (false)
     , nextAvailableChannel          (0)
     , saveOrder                     (-1)
@@ -164,119 +163,10 @@ void GenericProcessor::resetConnections()
 }
 
 
-void GenericProcessor::setSourceNode (GenericProcessor* sn)
-{
-    //std::cout << "My name is " << getName() << ". Setting source node." << std::endl;
-
-    if (! isSource())
-    {
-        //	std::cout << " I am not a source." << std::endl;
-
-        if (sn != 0)
-        {
-            //	std::cout << " The source is not blank." << std::endl;
-
-            if (! sn->isSink())
-            {
-                //		std::cout << " The source is not a sink." << std::endl;
-                if (sourceNode != sn)
-                {
-                    //			std::cout << " The source is new and named " << sn->getName() << std::endl;
-
-                    if (this->isMerger())
-                        setMergerSourceNode (sn);
-                    else
-                        sourceNode = sn;
-
-                    sn->setDestNode (this);
-                }
-                else
-                {
-                    //			std::cout << "  The source node is not new." << std::endl;
-                }
-            }
-            else
-            {
-                //		std::cout << " The source is a sink." << std::endl;
-                sourceNode = 0;
-            }
-
-        }
-        else
-        {
-            //		std::cout << " The source is blank." << std::endl;
-            sourceNode = 0;
-        }
-    }
-    else
-    {
-        //	std::cout << " I am a source. I can't have a source node." << std::endl;
-
-        if (sn != 0)
-            sn->setDestNode (this);
-    }
-}
-
-
-void GenericProcessor::setDestNode (GenericProcessor* dn)
-{
-    //	std::cout << "My name is " << getName() << ". Setting dest node." << std::endl;
-
-    if (! isSink())
-    {
-        //	std::cout << "  I am not a sink." << std::endl;
-
-        if (dn != 0)
-        {
-            //		std::cout << "  The dest node is not blank." << std::endl;
-            if (!dn->isSource())
-            {
-                //		std::cout << "  The dest node is not a source." << std::endl;
-
-                if (destNode != dn)
-                {
-                    //		std::cout << "  The dest node is new and named " << dn->getName() << std::endl;
-                    //
-                    if (this->isSplitter())
-                        setSplitterDestNode (dn);
-                    else
-                        destNode = dn;
-
-                    dn->setSourceNode (this);
-                }
-                else
-                {
-                    //		std::cout << "  The dest node is not new." << std::endl;
-                }
-            }
-            else
-            {
-                //	std::cout << "  The dest node is a source." << std::endl;
-
-                destNode = 0;
-            }
-        }
-        else
-        {
-            //	std::cout << "  The dest node is blank." << std::endl;
-
-            destNode = 0;
-        }
-    }
-    else
-    {
-        //std::cout << "  I am a sink, I can't have a dest node." << std::endl;
-        //if (dn != 0)
-        //	dn->setSourceNode(this);
-    }
-}
-
-
 void GenericProcessor::clearSettings()
 {
     //std::cout << "Generic processor clearing settings." << std::endl;
 
-    settings.originalSource = 0;
     settings.numInputs = 0;
     settings.numOutputs = 0;
 
@@ -310,50 +200,64 @@ void GenericProcessor::update()
     // ---- RESET EVERYTHING ---- ///
     clearSettings();
 
-    if (sourceNode != 0) // copy settings from source node
+
+	if (!isSource()) // copy settings from source node
     {
-        // everything is inherited except numOutputs
-        settings = sourceNode->settings;
-        settings.numInputs = settings.numOutputs;
-        settings.numOutputs = settings.numInputs;
-
-        for (int i = 0; i < sourceNode->dataChannelArray.size(); ++i)
-        {
-            DataChannel* sourceChan = sourceNode->dataChannelArray[i];
-            DataChannel* ch = new DataChannel (*sourceChan);
-			
-
-            if (i < m_recordStatus.size())
-            {
-                ch->setRecordState (m_recordStatus[i]);
-                ch->setMonitored( m_monitorStatus[i]);
-            }
-
-			ch->addToHistoricString(getName());
-            dataChannelArray.add (ch);
-        }
-
-		for (int i = 0; i < sourceNode->eventChannelArray.size(); ++i)
+		SignalElement* signal;
+		settings.numInputs = settings.numOutputs = 0;
+		int numInputs = signal->getInPorts();
+		for (int input = 0; input < numInputs; input++)
 		{
-			EventChannel* sourceChan = sourceNode->eventChannelArray[i];
-			EventChannel* ch = new EventChannel(*sourceChan);
-			ch->eventMetaDataLock = true;
-			eventChannelArray.add(ch);
-		}
-		for (int i = 0; i < sourceNode->spikeChannelArray.size(); ++i)
-		{
-			SpikeChannel* sourceChan = sourceNode->spikeChannelArray[i];
-			SpikeChannel* ch = new SpikeChannel(*sourceChan);
-			ch->eventMetaDataLock = true;
-			spikeChannelArray.add(ch);
 
+			if (signal->getInPort(input)->isConnected())
+			{
+				GenericProcessor* sourceNode = signal->getInPort(input)->getConnection()->getSignalElement()->getProcessor();
+				if (!sourceNode)
+				{
+					std::cerr << "WARNING: non-source port connected to source signal node" << std::endl;
+					continue;
+				}
+
+				for (int i = 0; i < sourceNode->dataChannelArray.size(); ++i)
+				{
+					DataChannel* sourceChan = sourceNode->dataChannelArray[i];
+					DataChannel* ch = new DataChannel(*sourceChan);
+
+
+					if (i < m_recordStatus.size())
+					{
+						ch->setRecordState(m_recordStatus[i]);
+						ch->setMonitored(m_monitorStatus[i]);
+					}
+
+					ch->addToHistoricString(getName());
+					dataChannelArray.add(ch);
+				}
+
+				for (int i = 0; i < sourceNode->eventChannelArray.size(); ++i)
+				{
+					EventChannel* sourceChan = sourceNode->eventChannelArray[i];
+					EventChannel* ch = new EventChannel(*sourceChan);
+					ch->eventMetaDataLock = true;
+					eventChannelArray.add(ch);
+				}
+				for (int i = 0; i < sourceNode->spikeChannelArray.size(); ++i)
+				{
+					SpikeChannel* sourceChan = sourceNode->spikeChannelArray[i];
+					SpikeChannel* ch = new SpikeChannel(*sourceChan);
+					ch->eventMetaDataLock = true;
+					spikeChannelArray.add(ch);
+
+				}
+				for (int i = 0; i < sourceNode->configurationObjectArray.size(); ++i)
+				{
+					ConfigurationObject* sourceChan = sourceNode->configurationObjectArray[i];
+					ConfigurationObject* ch = new ConfigurationObject(*sourceChan);
+					configurationObjectArray.add(ch);
+				}
+			}
 		}
-		for (int i = 0; i < sourceNode->configurationObjectArray.size(); ++i)
-		{
-			ConfigurationObject* sourceChan = sourceNode->configurationObjectArray[i];
-			ConfigurationObject* ch = new ConfigurationObject(*sourceChan);
-			configurationObjectArray.add(ch);
-		}
+		settings.numOutputs = settings.numInputs;
     }
     else // generate new settings
     {
@@ -1194,9 +1098,6 @@ float GenericProcessor::getDefaultBitVolts() const          { return 1.0; }
 float GenericProcessor::getBitVolts(int) const				{ return getDefaultBitVolts(); }
 float GenericProcessor::getBitVolts (const DataChannel* chan) const   { return 1.0; }
 
-GenericProcessor* GenericProcessor::getSourceNode() const { return sourceNode; }
-GenericProcessor* GenericProcessor::getDestNode()   const { return destNode; }
-
 int GenericProcessor::getNumStreams() const { return 1; }
 
 GenericEditor* GenericProcessor::getEditor() const { return editor; }
@@ -1290,4 +1191,9 @@ void ChannelCreationIndexes::clearChannelCreationCounts()
 unsigned int ProcessorInputSettings::getNumInputStreams() const
 {
 	return numInputStreams;
+}
+
+SignalElement* ProcessorSignalElement::getSignalElement() const
+{
+	return m_signalElement;
 }

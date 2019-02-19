@@ -71,7 +71,7 @@ class ProcessorSignalElement
 {
 public:
 	friend class SignalElement;
-	SignalElement* getSignalElement();
+	SignalElement* getSignalElement() const;
 private:
 	SignalElement* m_signalElement;
 };
@@ -255,12 +255,6 @@ public:
     */
     virtual void process (AudioSampleBuffer& continuousBuffer) = 0;
 
-    /** Pointer to a processor's immediate source node.*/
-    GenericProcessor* sourceNode;
-
-    /** Pointer to a processor's immediate destination.*/
-    GenericProcessor* destNode;
-
     /** Returns the sample rate for a processor (assumes the same rate for all channels).*/
     virtual float getSampleRate(int streamIdx = 0) const;
 
@@ -301,12 +295,6 @@ public:
     /** Sets the unique integer ID for a processor. */
     void setNodeId (int id);
 
-    /** Returns a pointer to the processor immediately preceding a given processor in the signal chain. */
-    GenericProcessor* getSourceNode() const;
-
-    /** Returns a pointer to the processor immediately following a given processor in the signal chain. */
-    GenericProcessor* getDestNode() const;
-
     /** Sets the input or output of a splitter or merger.*/
     virtual void switchIO (int);
 
@@ -315,12 +303,6 @@ public:
 
     /** Sets the input to a merger a given processor.*/
     virtual void setPathToProcessor (GenericProcessor* p);
-
-    /** Sets a processor's source node.*/
-    virtual void setSourceNode (GenericProcessor* sn);
-
-    /** Sets a processor's destination node.*/
-    virtual void setDestNode (GenericProcessor* dn);
 
     /** Sets one of two possible source nodes for a merger.*/
     virtual void setMergerSourceNode (GenericProcessor* sn);
@@ -427,9 +409,7 @@ public:
     /** Settings used by most processors. */
     struct ProcessorSettings
     {
-        GenericProcessor* originalSource;
-
-        int numInputs;
+          int numInputs;
         int numOutputs;
     };
 
