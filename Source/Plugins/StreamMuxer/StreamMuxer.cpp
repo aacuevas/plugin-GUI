@@ -99,6 +99,18 @@ void StreamMuxer::updateSettings()
 		//update editor
 		static_cast<StreamMuxerEditor*>(getEditor())->setStreamGroups(streamGroups, selectedGroup, selectedStream.get());
 	}
+#if 0
+	{
+		for (int g = 0; g < streamGroups.size(); g++)
+		{
+			std::cout << "g " << g << " s " << streamGroups[g].sampleRate << " n " << streamGroups[g].numChannels << " on " << streamGroups[g].startOffsets.size() << std::endl;
+			for (int o = 0; o < streamGroups[g].startOffsets.size(); o++)
+			{
+				std::cout << "o " << o << " - " << streamGroups[g].startOffsets[o] << std::endl;
+			}
+		}
+	}
+#endif
 	//Now we update the output channels
 	{
 		OwnedArray<DataChannel> oldChannels;
@@ -170,7 +182,7 @@ void StreamMuxer::process(AudioSampleBuffer& buffer)
 				buffer, //sourceBuffer
 				channelOffset + i, //sourceChannel
 				0, //sourceStartSample
-				getNumSamples(channelOffset + i));
+				buffer.getNumSamples());
 		}
 	}
 
