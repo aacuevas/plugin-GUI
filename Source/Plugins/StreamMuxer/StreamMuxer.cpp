@@ -194,6 +194,8 @@ void StreamMuxer::updateSettings()
 	ech->setName("Stream Selected");
 	ech->setDescription("Value of the selected stream each time it changes");
 	ech->setIdentifier("stream.mux.index.selected");
+	eventChannelArray.add(ech);
+	m_ech = ech;
 }
 
 void StreamMuxer::insertGroup(StreamGroup& workingGroup, int startOffset)
@@ -230,20 +232,97 @@ void StreamMuxer::setParameter(int parameterIndex, float value)
 	}
 }
 
+float StreamMuxer::getDefaultSampleRate() const
+{
+	return m_selectedSampleRate;
+}
+
+float StreamMuxer::getDefaultBitVolts() const
+{
+	return m_selectedBitVolts;
+}
+
+bool StreamMuxer::enable()
+{
+	m_oldSelectedStream = m_selectedStream.get();
+	m_firstBlock = true;
+	m_lastTimestamp = -1;
+	return true;
+}
+
 void StreamMuxer::process(AudioSampleBuffer& buffer)
 {
-	int channelOffset = streamGroups[m_selectedGroup].startOffsets[m_selectedStream.get()];
-	if (channelOffset > 0) //copying over the same channels can be problematic
+	int selectedStream = m_selectedStream.get();
+
+	DataChannel* chan = originalChannels[selectedStream][0];
+	uint32 selectedSamples = getNumSourceSamples(chan->getSourceNodeID(), chan->getSubProcessorIdx());
+	uint64 selectedTimestamp = getSourceTimestamp(chan->getSourceNodeID(), chan->getSubProcessorIdx());
+	uint32 samplenum = 0;
+
+	if (selectedStream == m_oldSelectedStream) //nothing has changed, proceed normally
 	{
-		for (int i = 0; i < settings.numOutputs; i++)
+		performBufferCopy(buffer, selectedStream, 0, 0, selectedSamples);
+		setTimestampAndSamples(selectedTimestamp, selectedSamples);
+	}
+	else //do some tricks to align stuff
+	{
+		uint64 eventTimestamp = selectedTimestamp;
+
+		DataChannel* lchan = originalChannels[m_oldSelectedStream][0];
+		//uint32 lastSelSamples = getNumSourceSamples(lchan->getSourceNodeID(), lchan->getSubProcessorIdx());
+		uint64 lastSelTimestamp = getSourceTimestamp(lchan->getSourceNodeID(), lchan->getSubProcessorIdx());
+
+		if (lastSelTimestamp != m_lastTimestamp + 1) //there has been data loss. Do not attempt to align and just continue normally
+		{
+			performBufferCopy(buffer, selectedStream, 0, 0, selectedSamples);
+			setTimestampAndSamples(selectedTimestamp, selectedSamples);
+		}
+		else
+		{
+			int64 timestampDiff = selectedTimestamp - lastSelTimestamp;
+			if ((timestampDiff > 0) //this block has a positive offset, copy part of the previous stream
+				&& (selectedSamples + timestampDiff <= buffer.getNumSamples())) //assuming there is enough space. if not, simply an apparent data loss will occur
+			{
+				//first copy the previously selected stream
+				performBufferCopy(buffer, m_oldSelectedStream, 0, 0, timestampDiff);
+				//now the ones from the current buffer
+				performBufferCopy(buffer, selectedStream, timestampDiff, 0, selectedSamples);
+				setTimestampAndSamples(lastSelTimestamp, selectedSamples + timestampDiff);
+				samplenum = timestampDiff;
+			}
+			else //negative offset. we need to trim this block
+			{
+				if (timestampDiff > 0) timestampDiff = 0; 
+				timestampDiff = -timestampDiff; //make it positive now to be easier to read
+				uint32 numSamples = selectedSamples - timestampDiff;
+				performBufferCopy(buffer, selectedStream, 0, timestampDiff, numSamples);
+				setTimestampAndSamples(selectedTimestamp + timestampDiff, numSamples);
+				eventTimestamp = selectedTimestamp + timestampDiff;
+			}
+		}
+		//send event to signal stream switch
+		BinaryEventPtr ev = BinaryEvent::createBinaryEvent(m_ech, eventTimestamp, &selectedSamples, sizeof(selectedSamples));
+		addEvent(m_ech, ev, samplenum);
+	}
+	m_lastTimestamp = selectedTimestamp + selectedSamples;;
+	m_oldSelectedStream = selectedStream;
+
+	
+}
+
+void StreamMuxer::performBufferCopy(AudioSampleBuffer& buffer, int stream, uint32 destStartSample, uint32 sourceStartSample, uint32 numSamples)
+{
+	int channelOffset = streamGroups[m_selectedGroup].startOffsets[stream];
+	for (int i = 0; i < settings.numOutputs; i++)
+	{
+		if (channelOffset != 0)
 		{
 			buffer.copyFrom(i, //destChannel
-				0, //destStartSample
+				destStartSample, //destStartSample
 				buffer, //sourceBuffer
 				channelOffset + i, //sourceChannel
-				0, //sourceStartSample
-				buffer.getNumSamples());
+				sourceStartSample, //sourceStartSample
+				numSamples);
 		}
 	}
-
 }
