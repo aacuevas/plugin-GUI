@@ -117,23 +117,83 @@ void StreamMuxer::updateSettings()
 		oldChannels.swapWith(dataChannelArray);
 		dataChannelArray.clear();
 
-		int startChannel = 0;
+		originalChannels.clear();
+
 		int numChannels = 0;
+		float sampleRate = 0;
 		if (selectedGroup >= 0 && selectedGroup < streamGroups.size())
 		{
-			startChannel = streamGroups[selectedGroup].startOffsets[selectedStream.get()];
 			numChannels = streamGroups[selectedGroup].numChannels;
 			settings.numOutputs = numChannels;
-		}
-		for (int i = 0; i < numChannels; i++)
-		{
-			int channelIndex = startChannel + i;
-			DataChannel* chan = oldChannels[channelIndex];
-			oldChannels.set(channelIndex, nullptr, false);
-			dataChannelArray.add(chan);
+
+			sampleRate = streamGroups[selectedGroup].sampleRate;
+
+			//store original channels
+			std::vector<int>& offsets = streamGroups[selectedGroup].startOffsets;
+			int numStreams = offsets.size();
+
+			for (int i = 0; i < numStreams; i++)
+			{
+				originalChannels.push_back(OwnedArray<DataChannel>());
+				int offset = offsets[i];
+				for (int c = 0; c < numChannels; c++)
+				{
+					DataChannel* chan = oldChannels[offset+c];
+					oldChannels.set(offset+c, nullptr, false);
+					originalChannels.back().add(chan);
+				}
+			}
+
+			//create metadata structures
+			String historic = "{";
+			HeapBlock<uint16> idArray;
+			idArray.allocate(numChannels * 2, true);
+			for (int i = 0; i < numStreams; i++)
+			{
+				DataChannel* chan = originalChannels[i][0]; //take first channel as sample
+				historic += "[" + chan->getHistoricString() + "]";
+				idArray[2*i] = chan->getSourceNodeID();
+				idArray[2 * i + 1] = chan->getSubProcessorIdx();
+			}
+			historic += "}";
+			MetaDataDescriptor mdNumDesc = MetaDataDescriptor(MetaDataDescriptor::UINT32, 1, "Number of muxed streams",
+				"Number of streams muxed into this channel",
+				"stream.mux.count");
+			MetaDataDescriptor mdSourceDesc = MetaDataDescriptor(MetaDataDescriptor::UINT16, 3, "Source processors",
+				"2xN array of uint16 that specifies the nodeID and Stream index of the possible sources for this channel",
+				"source.identifier.full.array");
+
+			MetaDataValue mdNum = MetaDataValue(mdNumDesc);
+			mdNum.setValue((uint32)numStreams);
+			MetaDataValue mdSource = MetaDataValue(mdSourceDesc, idArray.getData());
+
+			for (int i = 0; i < numChannels; i++)
+			{
+				
+				//lets assume the values are consistent between streams and take the first stream as sample
+				DataChannel* orig = originalChannels.front()[i];
+				DataChannel::DataChannelTypes type = orig->getChannelType();
+				DataChannel* chan = new DataChannel(type, sampleRate, this);
+				chan->setBitVolts(orig->getBitVolts());
+				chan->setDataUnits(orig->getDataUnits());
+				
+				chan->addToHistoricString(historic);
+				chan->addMetaData(mdNumDesc, mdNum);
+				chan->addMetaData(mdSourceDesc, mdSource);
+				
+				dataChannelArray.add(chan);
+			}
+			m_selectedSampleRate = sampleRate;
+			m_selectedBitVolts = dataChannelArray[0]->getBitVolts(); //to get some value
 		}
 	}
 	selectedGroupChanged = false; //always reset this
+	//now create event channel
+
+	EventChannel* ech = new EventChannel(EventChannel::UINT32_ARRAY, 1, 1, m_selectedSampleRate, this);
+	ech->setName("Stream Selected");
+	ech->setDescription("Value of the selected stream each time it changes");
+	ech->setIdentifier("stream.mux.index.selected");
 }
 
 void StreamMuxer::insertGroup(StreamGroup& workingGroup, int startOffset)

@@ -30,12 +30,19 @@ namespace StreamMuxerPlugin
 
 		void setParameter(int parameterIndex, float value) override;
 
+		float getDefaultSampleRate() const override;
+		float getDefaultBitVolts() const override;
+
 	private:
 		void insertGroup(StreamGroup& workingGroup, int startOffset);
 		std::vector<StreamGroup> streamGroups;
+		std::vector<OwnedArray<DataChannel>> originalChannels;
 		int selectedGroup;
 		Atomic<int> selectedStream;
 		bool selectedGroupChanged;
+
+		float m_selectedSampleRate;
+		float m_selectedBitVolts;
 
 		JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(StreamMuxer);
 	};
