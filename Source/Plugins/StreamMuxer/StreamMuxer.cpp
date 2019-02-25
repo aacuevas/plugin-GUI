@@ -281,7 +281,7 @@ void StreamMuxer::process(AudioSampleBuffer& buffer)
 		else
 		{
 			int64 timestampDiff = selectedTimestamp - lastSelTimestamp;
-			std::cout << "sd " << timestampDiff << std::endl;
+	//		std::cout << "timestamp diff " << timestampDiff << std::endl;
 			if ((timestampDiff > 0) //this block has a positive offset, copy part of the previous stream
 				&& (selectedSamples + timestampDiff <= buffer.getNumSamples())) //assuming there is enough space. if not, simply an apparent data loss will occur
 			{
