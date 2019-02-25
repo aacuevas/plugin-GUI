@@ -19,9 +19,9 @@ StreamGroup::StreamGroup(float s, int n) : sampleRate(s), numChannels(n)
 
 StreamMuxer::StreamMuxer() : GenericProcessor("Stream Muxer")
 {
-	selectedGroup = -1;
-	selectedStream.set(-1);
-	selectedGroupChanged = false;
+	m_selectedGroup = -1;
+	m_selectedStream.set(-1);
+	m_selectedGroupChanged = false;
 }
 
 
@@ -40,14 +40,14 @@ void StreamMuxer::updateSettings()
 {
 	//if the update came from other part of the signal chain, update everything
 	//we do not do this process when updating from the same processor to avoid wasting resources
-	if (!selectedGroupChanged)
+	if (!m_selectedGroupChanged)
 	{
 		//save current selections in case the inputs remain valid
 		StreamGroup savedGroup;
-		if (selectedGroup >= 0 && selectedGroup < streamGroups.size())
+		if (m_selectedGroup >= 0 && m_selectedGroup < streamGroups.size())
 		{
-			savedGroup.numChannels = streamGroups[selectedGroup].numChannels;
-			savedGroup.sampleRate = streamGroups[selectedGroup].sampleRate;
+			savedGroup.numChannels = streamGroups[m_selectedGroup].numChannels;
+			savedGroup.sampleRate = streamGroups[m_selectedGroup].sampleRate;
 		}
 
 		streamGroups.clear();
@@ -80,24 +80,24 @@ void StreamMuxer::updateSettings()
 		insertGroup(workingGroup, startOffset); //last group insertion
 
 		//now check if the selected group is still valid
-		if (selectedGroup >= 0 && selectedGroup < streamGroups.size() && streamGroups[selectedGroup] == savedGroup)
+		if (m_selectedGroup >= 0 && m_selectedGroup < streamGroups.size() && streamGroups[m_selectedGroup] == savedGroup)
 		{
 			//group is valid, check for stream validity
-			int stream = selectedStream.get();
-			if (stream > 0 && stream >= streamGroups[selectedGroup].startOffsets.size())
+			int stream = m_selectedStream.get();
+			if (stream > 0 && stream >= streamGroups[m_selectedGroup].startOffsets.size())
 			{
 				//not valid, setting stream to first one
-				selectedStream.set(0);
+				m_selectedStream.set(0);
 			}
 		}
 		else
 		{
 			//chose the first option, to be safe
-			selectedGroup = 0;
-			selectedStream.set(0);
+			m_selectedGroup = 0;
+			m_selectedStream.set(0);
 		}
 		//update editor
-		static_cast<StreamMuxerEditor*>(getEditor())->setStreamGroups(streamGroups, selectedGroup, selectedStream.get());
+		static_cast<StreamMuxerEditor*>(getEditor())->setStreamGroups(streamGroups, m_selectedGroup, m_selectedStream.get());
 	}
 #if 0
 	{
@@ -121,15 +121,15 @@ void StreamMuxer::updateSettings()
 
 		int numChannels = 0;
 		float sampleRate = 0;
-		if (selectedGroup >= 0 && selectedGroup < streamGroups.size())
+		if (m_selectedGroup >= 0 && m_selectedGroup < streamGroups.size())
 		{
-			numChannels = streamGroups[selectedGroup].numChannels;
+			numChannels = streamGroups[m_selectedGroup].numChannels;
 			settings.numOutputs = numChannels;
 
-			sampleRate = streamGroups[selectedGroup].sampleRate;
+			sampleRate = streamGroups[m_selectedGroup].sampleRate;
 
 			//store original channels
-			std::vector<int>& offsets = streamGroups[selectedGroup].startOffsets;
+			std::vector<int>& offsets = streamGroups[m_selectedGroup].startOffsets;
 			int numStreams = offsets.size();
 
 			for (int i = 0; i < numStreams; i++)
@@ -187,7 +187,7 @@ void StreamMuxer::updateSettings()
 			m_selectedBitVolts = dataChannelArray[0]->getBitVolts(); //to get some value
 		}
 	}
-	selectedGroupChanged = false; //always reset this
+	m_selectedGroupChanged = false; //always reset this
 	//now create event channel
 
 	EventChannel* ech = new EventChannel(EventChannel::UINT32_ARRAY, 1, 1, m_selectedSampleRate, this);
@@ -221,18 +221,18 @@ void StreamMuxer::setParameter(int parameterIndex, float value)
 {
 	if (parameterIndex == 0) //stream group
 	{
-		selectedGroup = value;
-		selectedGroupChanged = true;
+		m_selectedGroup = value;
+		m_selectedGroupChanged = true;
 	}
 	else if (parameterIndex == 1)
 	{
-		selectedStream.set(value);
+		m_selectedStream.set(value);
 	}
 }
 
 void StreamMuxer::process(AudioSampleBuffer& buffer)
 {
-	int channelOffset = streamGroups[selectedGroup].startOffsets[selectedStream.get()];
+	int channelOffset = streamGroups[m_selectedGroup].startOffsets[m_selectedStream.get()];
 	if (channelOffset > 0) //copying over the same channels can be problematic
 	{
 		for (int i = 0; i < settings.numOutputs; i++)
