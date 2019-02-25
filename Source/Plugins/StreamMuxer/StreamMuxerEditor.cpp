@@ -6,7 +6,7 @@ using namespace StreamMuxerPlugin;
 StreamMuxerEditor::StreamMuxerEditor(GenericProcessor* parentNode, bool useDefaultParameterEditors)
 	: GenericEditor(parentNode, useDefaultParameterEditors)
 {
-	desiredWidth = 250;
+	desiredWidth = 260;
 
 	groupLabel = new Label("Group Label", "Stream Group:");
 	groupLabel->setBounds(10, 25, 120, 20);

@@ -22,6 +22,7 @@ StreamMuxer::StreamMuxer() : GenericProcessor("Stream Muxer")
 	m_selectedGroup = -1;
 	m_selectedStream.set(-1);
 	m_selectedGroupChanged = false;
+	setProcessorType(Plugin::PluginProcessorType::PROCESSOR_TYPE_FILTER);
 }
 
 
