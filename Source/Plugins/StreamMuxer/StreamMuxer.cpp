@@ -148,7 +148,7 @@ void StreamMuxer::updateSettings()
 			//create metadata structures
 			String historic = "{";
 			HeapBlock<uint16> idArray;
-			idArray.allocate(numChannels * 2, true);
+			idArray.allocate(numStreams * 2, true);
 			for (int i = 0; i < numStreams; i++)
 			{
 				DataChannel* chan = originalChannels[i][0]; //take first channel as sample
@@ -160,7 +160,7 @@ void StreamMuxer::updateSettings()
 			MetaDataDescriptor mdNumDesc = MetaDataDescriptor(MetaDataDescriptor::UINT32, 1, "Number of muxed streams",
 				"Number of streams muxed into this channel",
 				"stream.mux.count");
-			MetaDataDescriptor mdSourceDesc = MetaDataDescriptor(MetaDataDescriptor::UINT16, 3, "Source processors",
+			MetaDataDescriptor mdSourceDesc = MetaDataDescriptor(MetaDataDescriptor::UINT16, numStreams * 2, "Source processors",
 				"2xN array of uint16 that specifies the nodeID and Stream index of the possible sources for this channel",
 				"source.identifier.full.array");
 
