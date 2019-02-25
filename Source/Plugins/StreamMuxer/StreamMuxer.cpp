@@ -306,6 +306,13 @@ void StreamMuxer::process(AudioSampleBuffer& buffer)
 		BinaryEventPtr ev = BinaryEvent::createBinaryEvent(m_ech, eventTimestamp, &selectedSamples, sizeof(selectedSamples));
 		addEvent(m_ech, ev, samplenum);
 	}
+
+	if (m_firstBlock) //send event at start
+	{
+		BinaryEventPtr ev = BinaryEvent::createBinaryEvent(m_ech, selectedTimestamp, &selectedSamples, sizeof(selectedSamples));
+		addEvent(m_ech, ev, 0);
+		m_firstBlock = false;
+	}
 	m_lastTimestamp = selectedTimestamp + selectedSamples;;
 	m_oldSelectedStream = selectedStream;
 
