@@ -273,7 +273,7 @@ void StreamMuxer::process(AudioSampleBuffer& buffer)
 		//uint32 lastSelSamples = getNumSourceSamples(lchan->getSourceNodeID(), lchan->getSubProcessorIdx());
 		uint64 lastSelTimestamp = getSourceTimestamp(lchan->getSourceNodeID(), lchan->getSubProcessorIdx());
 
-		if (lastSelTimestamp != m_lastTimestamp + 1) //there has been data loss. Do not attempt to align and just continue normally
+		if (lastSelTimestamp != m_lastTimestamp) //there has been data loss. Do not attempt to align and just continue normally
 		{
 			performBufferCopy(buffer, selectedStream, 0, 0, selectedSamples);
 			setTimestampAndSamples(selectedTimestamp, selectedSamples);
@@ -281,6 +281,7 @@ void StreamMuxer::process(AudioSampleBuffer& buffer)
 		else
 		{
 			int64 timestampDiff = selectedTimestamp - lastSelTimestamp;
+			std::cout << "sd " << timestampDiff << std::endl;
 			if ((timestampDiff > 0) //this block has a positive offset, copy part of the previous stream
 				&& (selectedSamples + timestampDiff <= buffer.getNumSamples())) //assuming there is enough space. if not, simply an apparent data loss will occur
 			{
