@@ -253,7 +253,7 @@ bool StreamMuxer::enable()
 
 void StreamMuxer::process(AudioSampleBuffer& buffer)
 {
-	int selectedStream = m_selectedStream.get();
+	uint32 selectedStream = m_selectedStream.get();
 
 	DataChannel* chan = originalChannels[selectedStream][0];
 	uint32 selectedSamples = getNumSourceSamples(chan->getSourceNodeID(), chan->getSubProcessorIdx());
@@ -303,13 +303,13 @@ void StreamMuxer::process(AudioSampleBuffer& buffer)
 			}
 		}
 		//send event to signal stream switch
-		BinaryEventPtr ev = BinaryEvent::createBinaryEvent(m_ech, eventTimestamp, &selectedSamples, sizeof(selectedSamples));
+		BinaryEventPtr ev = BinaryEvent::createBinaryEvent(m_ech, eventTimestamp, &selectedStream, sizeof(selectedStream));
 		addEvent(m_ech, ev, samplenum);
 	}
 
 	if (m_firstBlock) //send event at start
 	{
-		BinaryEventPtr ev = BinaryEvent::createBinaryEvent(m_ech, selectedTimestamp, &selectedSamples, sizeof(selectedSamples));
+		BinaryEventPtr ev = BinaryEvent::createBinaryEvent(m_ech, selectedTimestamp, &selectedStream, sizeof(selectedStream));
 		addEvent(m_ech, ev, 0);
 		m_firstBlock = false;
 	}
