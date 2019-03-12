@@ -295,21 +295,6 @@ public:
     /** Sets the unique integer ID for a processor. */
     void setNodeId (int id);
 
-    /** Sets the input or output of a splitter or merger.*/
-    virtual void switchIO (int);
-
-    /** Switches the input or output of a splitter or merger.*/
-    virtual void switchIO();
-
-    /** Sets the input to a merger a given processor.*/
-    virtual void setPathToProcessor (GenericProcessor* p);
-
-    /** Sets one of two possible source nodes for a merger.*/
-    virtual void setMergerSourceNode (GenericProcessor* sn);
-
-    /** Sets one of two possible source nodes for a splitter.*/
-    virtual void setSplitterDestNode (GenericProcessor* dn);
-
     /** Returns trus if a processor generates its own timestamps, false otherwise.*/
     virtual bool isGeneratesTimestamps() const;
 

@@ -44,8 +44,11 @@ public:
 	Port(SignalElement* element);
 	virtual ~Port();
 	Port* getConnection() const;
+	bool isConnected() const;
 	virtual unsigned int getNumChannels() const = 0;
 	SignalElement* getSignalElement() const;
+	void setChannelOffset(unsigned int off);
+	unsigned int getChannelOffset() const;
 
 	Port(const Port&) = delete;
 	Port& operator=(const Port&) = delete;
@@ -63,6 +66,7 @@ protected:
 private:
 	Port* m_connection;
 	SignalElement* const m_element;
+	unsigned int m_channelOffset;
 };
 
 /**
@@ -135,6 +139,7 @@ public:
 	OutPort* getOutPort(unsigned int) const;
 	void updateConnections();
 	void updateChannelCounts();
+	void updateChannelOffsets();
 	GenericProcessor* getProcessor() const;
 	unsigned int getConnectedInPorts() const;
 	unsigned int getConnectedOutPorts() const;
@@ -184,6 +189,7 @@ public:
 
 	void updateChainConnectivity();
 	void updateProcessorSettings();
+	void updateChannelCounts();
 	
 
 	

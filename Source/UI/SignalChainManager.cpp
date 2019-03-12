@@ -25,7 +25,7 @@
 #include "../Processors/GenericProcessor/GenericProcessor.h"
 
 //Port 
-Port::Port(SignalElement* element) : m_connection(nullptr), m_element(element)
+Port::Port(SignalElement* element) : m_connection(nullptr), m_element(element), m_channelOffset(0)
 {
 }
 
@@ -39,6 +39,11 @@ Port* Port::getConnection() const
 	return m_connection;
 }
 
+bool Port::isConnected() const
+{
+	return (m_connection != nullptr);
+}
+
 Port* Port::disconnect()
 {
 	Port* old = m_connection;
@@ -50,6 +55,16 @@ Port* Port::disconnect()
 SignalElement* Port::getSignalElement() const
 {
 	return m_element;
+}
+
+void Port::setChannelOffset(unsigned int off)
+{
+	m_channelOffset = off;
+}
+
+unsigned int Port::getChannelOffset() const
+{
+	return m_channelOffset;
 }
 
 /*Port::Port(Port&& other) : m_element(other.m_element)
@@ -260,6 +275,27 @@ void SignalElement::updateChannelCounts()
 	}
 }
 
+void SignalElement::updateChannelOffsets()
+{
+	if (m_processor)
+	{
+		int offset = 0;
+		int numPorts = m_outputPorts.size();
+		for (int i = 0; i < numPorts - 1; i++)
+		{
+			m_outputPorts[i]->setChannelOffset(offset);
+			offset += m_outputPorts[i]->getNumChannels();
+		}
+		offset = 0;
+		numPorts = m_inputPorts.size();
+		for (int i = 0; i < numPorts; i++)
+		{
+			m_inputPorts[i]->setChannelOffset(offset);
+			offset += m_inputPorts[i]->getNumChannels();
+		}
+	}
+}
+
 GenericProcessor* SignalElement::getProcessor() const
 {
 	return m_processor;
@@ -457,6 +493,7 @@ void SignalChainManager::updateSignalChain()
 {
 	updateChainConnectivity();
 	updateProcessorSettings();
+	updateChannelCounts();
 }
 
 void SignalChainManager::updateChainConnectivity()
@@ -468,6 +505,19 @@ void SignalChainManager::updateChainConnectivity()
 		elm->updateConnections();
 	}
 	sanitizeChain();
+}
+
+void SignalChainManager::updateChannelCounts()
+{
+	int numElements = m_elements.size();
+	for (int i = 0; i < numElements; i++)
+	{
+		m_elements[i]->updateChannelCounts();
+	}
+	for (int i = 0; i < numElements; i++)
+	{
+		m_elements[i]->updateChannelOffsets();
+	}
 }
 
 void SignalChainManager::updateProcessorSettings()

@@ -1105,13 +1105,6 @@ GenericEditor* GenericProcessor::getEditor() const { return editor; }
 AudioSampleBuffer* GenericProcessor::getContinuousBuffer() const { return 0; }
 MidiBuffer* GenericProcessor::getEventBuffer() const             { return 0; }
 
-void GenericProcessor::switchIO (int)   { }
-void GenericProcessor::switchIO()       { }
-
-void GenericProcessor::setPathToProcessor   (GenericProcessor* p)   { }
-void GenericProcessor::setMergerSourceNode  (GenericProcessor* sn)  { }
-void GenericProcessor::setSplitterDestNode  (GenericProcessor* dn)  { }
-
 void GenericProcessor::startRecording() { }
 void GenericProcessor::stopRecording()  { }
 

@@ -70,7 +70,7 @@ public:
     AudioNode* getAudioNode();
     MessageCenter* getMessageCenter();
 
-    void updateConnections(Array<SignalChainTabButton*, CriticalSection>);
+    void updateConnections();
 
     bool processorWithSameNameExists(const String& name);
 
@@ -112,7 +112,7 @@ private:
 
     void clearConnections();
 
-    void connectProcessors(GenericProcessor* source, GenericProcessor* dest);
+    void connectPorts(Port* dest);
     void connectProcessorToAudioAndRecordNodes(GenericProcessor* source);
 
 	int64 m_startSoftTimestamp{ 0 };
