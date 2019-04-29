@@ -29,6 +29,7 @@
 #include "../Processors/Editors/GenericEditor.h"
 #include "../Processors/Splitter/SplitterEditor.h"
 #include "../Processors/Merger/MergerEditor.h"
+#include "SignalChainManager.h"
 
 #include "ControlPanel.h"
 #include "UIComponent.h"
@@ -140,12 +141,6 @@ public:
     /** Called when a label is changed.*/
     void labelTextChanged(Label* label);
 
-    /** Returns an array of pointers to SignalChainTabButtons (which themselves hold pointers to the sources of each signal chain). */
-    Array<SignalChainTabButton*, CriticalSection> requestSignalChain()
-    {
-        return signalChainArray;
-    }
-
     /** Save the current configuration as an XML file. */
     const String saveState(File filename, String* xmlText = nullptr);
 
@@ -188,8 +183,8 @@ private:
 
     int selectionIndex;
 
-    Array<GenericEditor*, CriticalSection> editorArray;
-    Array<SignalChainTabButton*, CriticalSection> signalChainArray;
+	Array<GenericEditor*, CriticalSection> visibleEditorsArray;
+    Array<SignalChainTabButton*, CriticalSection> signalTabsArray;
 
     ScopedPointer<SignalChainManager> signalChainManager;
 
@@ -239,52 +234,14 @@ private:
 class SignalChainTabButton : public Button
 {
 public:
-    SignalChainTabButton();
+    SignalChainTabButton(EditorViewport *viewport, int number);
     ~SignalChainTabButton() {}
 
-    /** Determines the first editor in the signal chain associated with a SignalChainTabButton.*/
-    void setEditor(GenericEditor* p)
-    {
-        firstEditor = p;
-    }
 
-    /** Sets the SignalChainManager for this SignalChainTabButton.*/
-    void setManager(SignalChainManager* scm_)
-    {
-        scm = scm_;
-    }
-
-    /** Returns the editor associated with this SignalChainTabButton.*/
-    GenericEditor* getEditor()
-    {
-        return firstEditor;
-    }
-
-    /** Sets the number of this SignalChainTabButton.*/
-    void setNumber(int n)
-    {
-        num = n;
-    }
-
-    /** Returns the state of the configurationChanged variable.*/
-    bool hasNewConnections()
-    {
-        return configurationChanged;
-    }
-
-    /** Sets the state of the configurationChanged variable.*/
-    void hasNewConnections(bool t)
-    {
-        configurationChanged = t;
-    }
-
-    int offset;
 
 private:
 
-    GenericEditor* firstEditor;
-
-    SignalChainManager* scm;
+    EditorViewport* ev;
 
     /** Draws the SignalChainTabButton.*/
     void paintButton(Graphics& g, bool isMouseOver, bool isButtonDown);
@@ -292,10 +249,9 @@ private:
     /** Called when a mouse click occurs inside a SignalChainTabButton.*/
     void clicked();
 
-    enum actions {ADD, MOVE, REMOVE, ACTIVATE};
 
     int num;
-    bool configurationChanged;
+
 
     Font buttonFont;
 

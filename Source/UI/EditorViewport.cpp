@@ -1013,124 +1013,7 @@ void EditorViewport::buttonClicked(Button* button)
     }
 }
 
-///////////////////////////////////////////////////////////////////
-////////////////SIGNAL CHAIN TAB BUTTON////////////////////////////
-///////////////////////////////////////////////////////////////////
 
-SignalChainTabButton::SignalChainTabButton() : Button("Name"),
-    configurationChanged(true)
-{
-    setRadioGroupId(99);
-    setClickingTogglesState(true);
-
-    // MemoryInputStream mis(BinaryData::silkscreenserialized, BinaryData::silkscreenserializedSize, false);
-    //Typeface::Ptr typeface = new CustomTypeface(mis);
-    buttonFont = Font("Small Text", 10, Font::plain);
-    buttonFont.setHeight(14);
-
-    offset = 0;
-}
-
-
-void SignalChainTabButton::clicked()
-{
-    if (getToggleState())
-    {
-        //std::cout << "Button clicked: " << firstEditor->getName() << std::endl;
-        EditorViewport* ev = (EditorViewport*) getParentComponent();
-
-        scm->updateVisibleEditors(firstEditor, 0, 0, ACTIVATE);
-        ev->leftmostEditor = offset;
-        ev->refreshEditors();
-    }
-}
-
-void SignalChainTabButton::paintButton(Graphics& g, bool isMouseOver, bool isButtonDown)
-{
-
-    ColourGradient grad1, grad2;
-
-    if (getToggleState() == true)
-    {
-
-        grad1 = ColourGradient(Colour(255, 136, 34), 0.0f, 0.0f,
-                               Colour(230, 193, 32), 0.0f, 20.0f,
-                               false);
-
-        grad2 = ColourGradient(Colour(255, 136, 34), 0.0f, 20.0f,
-                               Colour(230, 193, 32), 0.0f, 0.0f,
-                               false);
-    }
-    else
-    {
-        grad2 = ColourGradient(Colour(80, 80, 80), 0.0f, 20.0f,
-                               Colour(120, 120, 120), 0.0f, 0.0f,
-                               false);
-
-        grad1 =  ColourGradient(Colour(80, 80, 80), 0.0f, 0.0f,
-                                Colour(120, 120, 120), 0.0f, 20.0f,
-                                false);
-    }
-
-    if (isMouseOver)
-    {
-
-        grad1.multiplyOpacity(0.7f);
-        grad2.multiplyOpacity(0.7f);
-        //  grad1 = ColourGradient(Colour(255, 255, 255), 0.0f, 20.0f,
-        //                         Colour(180, 180, 180), 0.0f, 0.0f,
-        //                        false);
-
-        // grad2 = ColourGradient(Colour(255, 255, 255), 0.0f, 0.0f,
-        //                         Colour(180, 180, 180), 0.0f, 20.0f,
-        //                        false);
-    }
-
-    if (isButtonDown)
-    {
-
-        // ColourGradient grad3 = grad1;
-        // grad1 = grad2;
-        // grad2 = grad3;
-        // grad1.multiplyOpacity(0.7f);
-        // grad2.multiplyOpacity(0.7f);
-
-    }
-
-    g.setGradientFill(grad2);
-    g.fillEllipse(0,0,getWidth(),getHeight());
-
-    g.setGradientFill(grad1);
-    g.fillEllipse(2,2,getWidth()-4,getHeight()-4);
-
-    g.setFont(buttonFont);
-    g.setColour(Colours::black);
-
-    String n;
-
-    if (num == 0)
-        n = "A";
-    else if (num == 1)
-        n = "B";
-    else if (num == 2)
-        n = "C";
-    else if (num == 3)
-        n = "D";
-    else if (num == 4)
-        n = "E";
-    else if (num == 5)
-        n = "F";
-    else if (num == 6)
-        n = "G";
-    else if (num == 7)
-        n = "H";
-    else if (num == 8)
-        n = "I";
-    else
-        n = "-";
-
-    g.drawText(n,0,0,getWidth(),getHeight(),Justification::centred,true);
-}
 
 
 
@@ -1701,4 +1584,109 @@ void EditorViewport::setParametersByXML(GenericProcessor* targetProcessor, XmlEl
 
         }
     }
+}
+
+
+///////////////////////////////////////////////////////////////////
+////////////////SIGNAL CHAIN TAB BUTTON////////////////////////////
+///////////////////////////////////////////////////////////////////
+
+SignalChainTabButton::SignalChainTabButton(EditorViewport* view, int number) : ev(view), num(number),
+	Button("Name"),
+configurationChanged(true)
+{
+	setRadioGroupId(99);
+	setClickingTogglesState(true);
+
+	// MemoryInputStream mis(BinaryData::silkscreenserialized, BinaryData::silkscreenserializedSize, false);
+	//Typeface::Ptr typeface = new CustomTypeface(mis);
+	buttonFont = Font("Small Text", 10, Font::plain);
+	buttonFont.setHeight(14);
+
+	offset = 0;
+}
+
+
+void SignalChainTabButton::clicked()
+{
+	if (getToggleState())
+	{
+		//std::cout << "Button clicked: " << firstEditor->getName() << std::endl;
+		EditorViewport* ev = (EditorViewport*)getParentComponent();
+
+		scm->updateVisibleEditors(firstEditor, 0, 0, ACTIVATE);
+		ev->leftmostEditor = offset;
+		ev->refreshEditors();
+	}
+}
+
+void SignalChainTabButton::paintButton(Graphics& g, bool isMouseOver, bool isButtonDown)
+{
+
+	ColourGradient grad1, grad2;
+
+	if (getToggleState() == true)
+	{
+
+		grad1 = ColourGradient(Colour(255, 136, 34), 0.0f, 0.0f,
+			Colour(230, 193, 32), 0.0f, 20.0f,
+			false);
+
+		grad2 = ColourGradient(Colour(255, 136, 34), 0.0f, 20.0f,
+			Colour(230, 193, 32), 0.0f, 0.0f,
+			false);
+	}
+	else
+	{
+		grad2 = ColourGradient(Colour(80, 80, 80), 0.0f, 20.0f,
+			Colour(120, 120, 120), 0.0f, 0.0f,
+			false);
+
+		grad1 = ColourGradient(Colour(80, 80, 80), 0.0f, 0.0f,
+			Colour(120, 120, 120), 0.0f, 20.0f,
+			false);
+	}
+
+	if (isMouseOver)
+	{
+
+		grad1.multiplyOpacity(0.7f);
+		grad2.multiplyOpacity(0.7f);
+		//  grad1 = ColourGradient(Colour(255, 255, 255), 0.0f, 20.0f,
+		//                         Colour(180, 180, 180), 0.0f, 0.0f,
+		//                        false);
+
+		// grad2 = ColourGradient(Colour(255, 255, 255), 0.0f, 0.0f,
+		//                         Colour(180, 180, 180), 0.0f, 20.0f,
+		//                        false);
+	}
+
+	if (isButtonDown)
+	{
+
+		// ColourGradient grad3 = grad1;
+		// grad1 = grad2;
+		// grad2 = grad3;
+		// grad1.multiplyOpacity(0.7f);
+		// grad2.multiplyOpacity(0.7f);
+
+	}
+
+	g.setGradientFill(grad2);
+	g.fillEllipse(0, 0, getWidth(), getHeight());
+
+	g.setGradientFill(grad1);
+	g.fillEllipse(2, 2, getWidth() - 4, getHeight() - 4);
+
+	g.setFont(buttonFont);
+	g.setColour(Colours::black);
+
+	String n;
+
+	if (num < 26)
+		n = String('A' + num);
+	else
+		n = "-";
+	
+	g.drawText(n, 0, 0, getWidth(), getHeight(), Justification::centred, true);
 }
