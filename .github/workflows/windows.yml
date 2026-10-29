@@ -74,8 +74,6 @@ jobs:
         user_info="X-JFrog-Art-Api:$ARTIFACTORY_ACCESS_TOKEN"
         curl -H $user_info -T $zipfile "https://openephys.jfrog.io/artifactory/GUI-binaries/${artifactory_repo}/windows/$zipfile"
 
-        cp ../Resources/DLLs/FrontPanelUSB-DriverOnly-4.5.5.exe open-ephys
-        cp ../Resources/DLLs/FTD3XXDriver_WHQLCertified_1.3.0.10_Installer.exe open-ephys
         cd open-ephys
         rm -f msvcp140.dll vcruntime140.dll vcruntime140_1.dll
         cd ../../Resources/Installers/Windows
