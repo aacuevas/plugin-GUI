@@ -92,7 +92,7 @@ jobs:
         zipfile=open-ephys-${gui_ver}-linux${version_suffix}.zip
         zip -r $zipfile open-ephys
         user_info="X-JFrog-Art-Api:$ARTIFACTORY_ACCESS_TOKEN"
-        curl -H $user_info -T $zipfile "https://openephys.jfrog.io/artifactory/GUI-binaries/${artifactory_repo}/linux/$zipfile"
+        # curl -H $user_info -T $zipfile "https://openephys.jfrog.io/artifactory/GUI-binaries/${artifactory_repo}/linux/$zipfile"
 
         cd ../Resources/Installers/Linux/Open-Ephys_Installer
         mkdir -p usr/local/bin/open-ephys-gui
@@ -105,5 +105,5 @@ jobs:
         dpkg-deb --build Open-Ephys_Installer
         installer=open-ephys-gui-${gui_ver}${version_suffix}.deb
         mv -v Open-Ephys_Installer.deb $installer
-        curl -H $user_info -T $installer "https://openephys.jfrog.io/artifactory/GUI-binaries/${artifactory_repo}-Installer/linux/$installer"
+        # curl -H $user_info -T $installer "https://openephys.jfrog.io/artifactory/GUI-binaries/${artifactory_repo}-Installer/linux/$installer"
       shell: bash

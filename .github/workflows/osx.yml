@@ -143,7 +143,7 @@ jobs:
         zipfile=open-ephys-${gui_ver}-mac${version_suffix}.zip
         /usr/bin/ditto -c -k --sequesterRsrc --keepParent open-ephys $zipfile
         user_info="X-JFrog-Art-Api:$ARTIFACTORY_ACCESS_TOKEN"
-        curl -H $user_info -T $zipfile "https://openephys.jfrog.io/artifactory/GUI-binaries/${artifactory_repo}/mac/$zipfile"
+        # curl -H $user_info -T $zipfile "https://openephys.jfrog.io/artifactory/GUI-binaries/${artifactory_repo}/mac/$zipfile"
 
         # Create a DMG installer
         brew install create-dmg && create-dmg \
@@ -168,4 +168,4 @@ jobs:
         echo "Attach staple to DMG"
         xcrun stapler staple $installer
 
-        curl -H $user_info -T $installer "https://openephys.jfrog.io/artifactory/GUI-binaries/${artifactory_repo}-Installer/mac/$installer"
+        # curl -H $user_info -T $installer "https://openephys.jfrog.io/artifactory/GUI-binaries/${artifactory_repo}-Installer/mac/$installer"

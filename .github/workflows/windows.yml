@@ -74,7 +74,7 @@ jobs:
         zipfile=open-ephys-${gui_ver}-windows${version_suffix}.zip
         powershell Compress-Archive -Path "open-ephys" -DestinationPath ${zipfile}
         user_info="X-JFrog-Art-Api:$ARTIFACTORY_ACCESS_TOKEN"
-        curl -H $user_info -T $zipfile "https://openephys.jfrog.io/artifactory/GUI-binaries/${artifactory_repo}/windows/$zipfile"
+        # curl -H $user_info -T $zipfile "https://openephys.jfrog.io/artifactory/GUI-binaries/${artifactory_repo}/windows/$zipfile"
 
         cd open-ephys
         rm -f msvcp140.dll vcruntime140.dll vcruntime140_1.dll
@@ -82,7 +82,7 @@ jobs:
         iscc "windows_installer_script.iss"
         installer=Install-Open-Ephys-GUI-${gui_ver}${version_suffix}.exe
         mv Open-Ephys_Installer.exe $installer
-        curl -H $user_info -T $installer "https://openephys.jfrog.io/artifactory/GUI-binaries/${artifactory_repo}-Installer/windows/$installer"
+        # curl -H $user_info -T $installer "https://openephys.jfrog.io/artifactory/GUI-binaries/${artifactory_repo}-Installer/windows/$installer"
       shell: bash
 
   # Signed release build. Runs only when a GitHub release is published or when triggered manually,
@@ -174,7 +174,7 @@ jobs:
         zipfile=open-ephys-${gui_ver}-windows.zip
         powershell Compress-Archive -Path "open-ephys" -DestinationPath "$zipfile"
         user_info="X-JFrog-Art-Api:$ARTIFACTORY_ACCESS_TOKEN"
-        curl -H "$user_info" -T "$zipfile" "https://openephys.jfrog.io/artifactory/GUI-binaries/${artifactory_repo}/windows/$zipfile"
+        # curl -H "$user_info" -T "$zipfile" "https://openephys.jfrog.io/artifactory/GUI-binaries/${artifactory_repo}/windows/$zipfile"
 
         cd open-ephys
         rm -f msvcp140.dll vcruntime140.dll vcruntime140_1.dll
@@ -187,5 +187,13 @@ jobs:
         installer=Install-Open-Ephys-GUI-${gui_ver}.exe
         mv Open-Ephys_Installer.exe "$installer"
         powershell -Command "if ((Get-AuthenticodeSignature '$installer').Status -ne 'Valid') { Write-Error 'Installer signature is not valid'; exit 1 }"
-        curl -H "$user_info" -T "$installer" "https://openephys.jfrog.io/artifactory/GUI-binaries/${artifactory_repo}-Installer/windows/$installer"
+        # curl -H "$user_info" -T "$installer" "https://openephys.jfrog.io/artifactory/GUI-binaries/${artifactory_repo}-Installer/windows/$installer"
       shell: bash
+    - name: upload signed artifacts
+      uses: actions/upload-artifact@v7
+      with:
+        name: open-ephys-windows-signed
+        path: |
+          Build/open-ephys-*-windows.zip
+          Resources/Installers/Windows/Install-Open-Ephys-GUI-*.exe
+        retention-days: 7
