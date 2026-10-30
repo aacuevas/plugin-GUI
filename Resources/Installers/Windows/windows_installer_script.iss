@@ -22,6 +22,10 @@ AllowNoIcons=yes
 WizardStyle=modern dynamic
 ArchiveExtraction=enhanced/nopassword
 SetupLogging=yes
+#ifdef SIGN
+SignTool=azsign
+SignedUninstaller=yes
+#endif
 
 [Tasks]
 Name: desktopicon; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
